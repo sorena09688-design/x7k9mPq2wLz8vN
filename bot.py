@@ -8,6 +8,11 @@ import asyncio
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHAT_ID = os.environ.get('CHAT_ID')
+# ---- تست فیک ----
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
+print("تست: توکن و چت آیدی خونده شد")
+# -----------------
 
 SYMBOLS = ["ADAUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT"]
 INTERVAL = "15min"
@@ -89,6 +94,8 @@ def check_signal(df, df_htf, symbol):
 
 async def main():
     bot = Bot(token=BOT_TOKEN)
+    await bot.send_message(chat_id=CHAT_ID, text="🧪 تست فیک: ربات به تلگرام وصله!")
+print("پیام تست ارسال شد!")
     for symbol in SYMBOLS:
         df = get_klines(symbol, INTERVAL)
         df_htf = get_klines(symbol, HTF_INTERVAL)
