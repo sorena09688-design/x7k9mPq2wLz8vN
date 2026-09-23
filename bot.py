@@ -14,7 +14,12 @@ CHAT_ID = os.environ.get('CHAT_ID')
 print("تست: توکن و چت آیدی خونده شد")
 # -----------------
 
-SYMBOLS = ["ADAUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT"]
+SYMBOLS = [
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
+    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
+    "MATICUSDT", "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT",
+    "ZECUSDT", "FILUSDT", "NEARUSDT", "APTUSDT", "ARBUSDT"
+]
 INTERVAL = "15min"
 HTF_INTERVAL = "4hour"
 
