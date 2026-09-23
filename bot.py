@@ -81,8 +81,8 @@ def check_signal(df, df_htf, symbol):
     rsi_short = last["rsi"] < 55
     vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
     adx_ok = last["adx"] > ADX_THRESHOLD
-    htf_up = df_htf["ema_fast"].iloc[-1] > df_htf["ema_slow"].iloc[-1]
-    htf_down = df_htf["ema_fast"].iloc[-1] < df_htf["ema_slow"].iloc[-1]
+    htf_up = True
+    htf_down = True
     price = last["close"]
     if cross_up and rsi_long and vol_ok and adx_ok and htf_up:
         return {"type": "لانگ 🟢", "symbol": symbol, "price": round(price, 4),
