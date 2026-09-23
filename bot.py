@@ -6,8 +6,8 @@ from telegram import Bot
 from telegram.request import HTTPXRequest
 import asyncio
 
-BOT_TOKEN = os.environ['8884219346:AAFwdxw0FxxFYgFcnkvDm6P8sOpCN5cByOs']
-CHAT_ID = os.environ['6101647310']
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
 
 SYMBOLS = ["ADAUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT"]
 INTERVAL = "15min"
