@@ -20,14 +20,14 @@ SYMBOLS = [
     "MATICUSDT", "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT",
     "ZECUSDT", "FILUSDT", "NEARUSDT", "APTUSDT", "ARBUSDT"
 ]
-INTERVAL = "15min"
+INTERVAL = "30min"
 HTF_INTERVAL = "4hour"
 
 RSI_PERIOD = 14
 EMA_FAST = 20
 EMA_SLOW = 50
-ADX_THRESHOLD = 0
-VOLUME_MULT = 0.1
+ADX_THRESHOLD = 22
+VOLUME_MULT = 1.3
 
 def get_klines(symbol, interval="15min"):
     symbol_kucoin = symbol.replace("USDT", "-USDT")
@@ -82,8 +82,8 @@ def check_signal(df, df_htf, symbol):
     cross_down = last["ema_fast"] < last["ema_slow"]
     if not (cross_up or cross_down):
         return None
-    rsi_long = last["rsi"] > 0
-    rsi_short = last["rsi"] < 100
+    rsi_long = last["rsi"] > 52
+    rsi_short = last["rsi"] < 48
     vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
     adx_ok = last["adx"] > ADX_THRESHOLD
     htf_up = True
