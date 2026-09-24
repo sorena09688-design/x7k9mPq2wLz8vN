@@ -20,9 +20,12 @@ if not CHAT_ID:
 
 HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
+ACTIVE_SIGNALS_FILE = "active_signals.json"
 COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
 NO_SIGNAL_COOLDOWN_MINUTES = 0
+VALIDITY_CHECK_MINUTES = 30
+MAX_VALIDITY_CHECKS = 3
 
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
@@ -45,7 +48,7 @@ SYMBOLS = [
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
-INTERVAL = "30min"
+INTERVAL = "15min"
 TREND_TFS = [
     ("30min", "۳۰ دقیقه"),
     ("2hour", "۲ ساعته"),
@@ -125,6 +128,19 @@ def get_klines(symbol, interval):
         return None
 
 
+def get_price(symbol):
+    try:
+        symbol_kucoin = symbol.replace("USDT", "-USDT")
+        url = "https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=" + symbol_kucoin
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        if data.get("code") == "200000":
+            return float(data["data"]["price"])
+    except Exception:
+        pass
+    return None
+
+
 def calc_indicators(df):
     delta = df["close"].diff()
     gain = delta.where(delta > 0, 0).rolling(RSI_PERIOD).mean()
@@ -193,11 +209,218 @@ def get_decimals(price):
 
 
 def calc_rr(entry, sl, tp):
-    """محاسبه نسبت ریسک به ریوارد"""
     risk = abs(entry - sl)
     if risk <= 0:
         return 0
     return round(abs(tp - entry) / risk, 2)
+
+
+def add_active_signal(symbol, sig, signal_type, trends, message_id):
+    data = load_history(ACTIVE_SIGNALS_FILE)
+    data[symbol] = {
+        "type": sig["type"],
+        "price": sig["price"],
+        "sl": sig["sl"],
+        "tp1": sig["tp1"],
+        "tp2": sig["tp2"],
+        "tp3": sig["tp3"],
+        "signal_type": signal_type,
+        "message_id": message_id,
+        "created": datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+        "tp1_hit": False,
+        "tp2_hit": False,
+        "tp3_hit": False,
+        "validity_count": 0,
+        "last_validity_check": None,
+    }
+    save_history(data, ACTIVE_SIGNALS_FILE)
+
+
+async def check_active_signals(bot, now):
+    data = load_history(ACTIVE_SIGNALS_FILE)
+    if not data:
+        return
+
+    updated = False
+    now_dt = datetime.now(IRAN_TZ).replace(tzinfo=None)
+
+    for symbol in list(data.keys()):
+        info = data[symbol]
+        price = get_price(symbol)
+        if price is None:
+            continue
+
+        direction = info["type"]
+        sl = info["sl"]
+        tp1 = info["tp1"]
+        tp2 = info["tp2"]
+        tp3 = info["tp3"]
+        msg_id = info.get("message_id")
+        dec = get_decimals(info["price"])
+        entry = info["price"]
+
+        # ====== بررسی حد ضرر ======
+        sl_hit = False
+        if "لانگ" in direction and price <= sl:
+            sl_hit = True
+        elif "شورت" in direction and price >= sl:
+            sl_hit = True
+
+        if sl_hit:
+            msg = (
+                "❌ <b>سیگنال باطل شد</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "🔴 <b>حد ضرر لمس شد:</b> " + str(sl) + "\n"
+                "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n"
+                "⏰ " + now
+            )
+            try:
+                if msg_id:
+                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                else:
+                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                print("سیگنال باطل شد: " + symbol)
+            except Exception as e:
+                print("خطا در ارسال: " + str(e))
+            del data[symbol]
+            updated = True
+            continue
+
+        # ====== بررسی اهداف ======
+        tp_hit = False
+        if "لانگ" in direction:
+            if price >= tp3 and not info.get("tp3_hit"):
+                info["tp3_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                del data[symbol]
+                updated = True
+                continue
+            elif price >= tp2 and not info.get("tp2_hit"):
+                info["tp2_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+            elif price >= tp1 and not info.get("tp1_hit"):
+                info["tp1_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+
+        elif "شورت" in direction:
+            if price <= tp3 and not info.get("tp3_hit"):
+                info["tp3_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                del data[symbol]
+                updated = True
+                continue
+            elif price <= tp2 and not info.get("tp2_hit"):
+                info["tp2_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+            elif price <= tp1 and not info.get("tp1_hit"):
+                info["tp1_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+
+        # ====== بررسی اعتبار سیگنال ======
+        if not tp_hit:
+            try:
+                created = datetime.strptime(info["created"], "%Y-%m-%d %H:%M:%S")
+                minutes_passed = (now_dt - created).total_seconds() / 60
+            except:
+                minutes_passed = 0
+
+            last_validity = info.get("last_validity_check")
+            validity_count = info.get("validity_count", 0)
+
+            should_send = False
+            if validity_count < MAX_VALIDITY_CHECKS:
+                if last_validity is None and minutes_passed >= VALIDITY_CHECK_MINUTES:
+                    should_send = True
+                elif last_validity is not None:
+                    try:
+                        last_dt = datetime.strptime(last_validity, "%Y-%m-%d %H:%M:%S")
+                        mins_since_last = (now_dt - last_dt).total_seconds() / 60
+                        if mins_since_last >= VALIDITY_CHECK_MINUTES:
+                            should_send = True
+                    except:
+                        pass
+
+            if should_send:
+                diff_pct = ((price - entry) / entry) * 100
+                if "لانگ" in direction:
+                    status_emoji = "🟢" if diff_pct >= 0 else "🔴"
+                else:
+                    status_emoji = "🟢" if diff_pct <= 0 else "🔴"
+
+                msg = (
+                    "🔄 <b>سیگنال هنوز معتبر است</b>\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    "💰 <b>قیمت ورود:</b> " + str(entry) + "\n"
+                    "💵 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n"
+                    + status_emoji + " <b>تغییر:</b> " + str(round(diff_pct, 2)) + "%\n"
+                    "🛑 <b>حد ضرر:</b> " + str(sl) + "\n"
+                    "🎯 <b>هدف اول:</b> " + str(tp1) + "\n"
+                    "✅ <b>وضعیت:</b> هنوز می‌توان وارد شد\n"
+                    "⏰ " + now
+                )
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                    print("سیگنال هنوز معتبر: " + symbol)
+                except Exception as e:
+                    print("خطا در ارسال: " + str(e))
+
+                info["last_validity_check"] = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+                info["validity_count"] = validity_count + 1
+                updated = True
+
+    if updated:
+        save_history(data, ACTIVE_SIGNALS_FILE)
 
 
 def build_signal_message(sig, now, signal_type, trends):
@@ -274,7 +497,6 @@ def check_signal(df, df_htf, symbol):
     volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
     adx_required = last["adx"] > ADX_THRESHOLD
 
-    # ====== ۱. برگشت لانگ ======
     if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
         macd_required = last["macd"] > last["macd_signal"]
         if not (volume_required and macd_required and adx_required and htf_up):
@@ -288,7 +510,6 @@ def check_signal(df, df_htf, symbol):
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "برگشت"
 
-    # ====== ۲. برگشت شورت ======
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
         macd_required = last["macd"] < last["macd_signal"]
         if not (volume_required and macd_required and adx_required and htf_down):
@@ -302,7 +523,6 @@ def check_signal(df, df_htf, symbol):
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "برگشت"
 
-    # ====== ۳. کراس ======
     cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
@@ -428,6 +648,9 @@ async def main():
     duplicates_skipped = 0
     processed = 0
 
+    # ====== اول سیگنال‌های فعال رو چک کن ======
+    await check_active_signals(bot, now)
+
     for symbol in SYMBOLS:
         try:
             df = get_klines(symbol, INTERVAL)
@@ -453,7 +676,8 @@ async def main():
                     signal_history = update_history(signal_history, symbol, sig["type"], signal_type)
                     signals_found += 1
                     msg = build_signal_message(sig, now, signal_type, trends)
-                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                    sent = await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                    add_active_signal(symbol, sig, signal_type, trends, sent.message_id)
                     print("سیگنال: " + symbol + " | " + signal_type)
                 else:
                     duplicates_skipped += 1
