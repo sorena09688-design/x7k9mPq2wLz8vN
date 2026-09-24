@@ -45,7 +45,7 @@ SYMBOLS = [
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
-INTERVAL = "15min"
+INTERVAL = "30min"
 TREND_TFS = [
     ("30min", "۳۰ دقیقه"),
     ("2hour", "۲ ساعته"),
