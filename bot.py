@@ -101,8 +101,8 @@ def check_signal(df, df_htf, symbol):
     last = df.iloc[-2]
     prev = df.iloc[-3]
 
-    cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
-    cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
+    cross_up = last["ema_fast"] > last["ema_slow"]
+    cross_down = last["ema_fast"] < last["ema_slow"]
 
     if not (cross_up or cross_down):
         return None, None
