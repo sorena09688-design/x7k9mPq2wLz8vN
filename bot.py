@@ -242,7 +242,7 @@ async def main():
     # ==== گزارش تشخیصی ====
     if signals_found == 0:
         print(f"{now} | سیگنالی پیدا نشد")
-        if SEND_DIAGNOSTIC and diagnostics:
+        if SEND_DIAGNOSTIC:
             report = f"📋 <b>گزارش تشخیصی - {now}</b>\n"
             report += f"⏱ تایم‌فریم: {INTERVAL}\n"
             report += f"━━━━━━━━━━━━━━━━━━\n"
