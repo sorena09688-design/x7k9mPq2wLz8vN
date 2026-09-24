@@ -27,7 +27,7 @@ HTF_INTERVAL = "4hour"
 RSI_PERIOD = 14
 EMA_FAST = 9
 EMA_SLOW = 21
-EMA_TREND = 200
+EMA_TREND = 100
 ADX_THRESHOLD = 22
 VOLUME_MULT = 1.2
 RSI_LONG_MIN = 52
@@ -95,8 +95,8 @@ def calc_indicators(df):
 
 def check_signal(df, df_htf, symbol):
     """برمی‌گردونه: (signal, diagnostic)"""
-    if len(df) < 3 or df_htf is None or len(df_htf) < 200:
-        return None, None
+    if len(df) < 3 or df_htf is None or len(df_htf) < 100:
+    return None, None
 
     last = df.iloc[-2]
     prev = df.iloc[-3]
