@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from telegram import Bot
 import asyncio
+import time
 from datetime import datetime
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -19,8 +20,29 @@ if not CHAT_ID:
 SYMBOLS = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
     "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
-    "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT", "ZECUSDT"
+    "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT", "ZECUSDT",
+    "TRXUSDT", "MATICUSDT", "ETCUSDT", "FILUSDT", "APTUSDT",
+    "ARBUSDT", "OPUSDT", "NEARUSDT", "INJUSDT", "SUIUSDT",
+    "SEIUSDT", "TIAUSDT", "IMXUSDT", "GRTUSDT", "SANDUSDT",
+    "MANAUSDT", "AXSUSDT", "FTMUSDT", "ALGOUSDT", "EOSUSDT",
+    "XLMUSDT", "VETUSDT", "THETAUSDT", "EGLDUSDT", "FLOWUSDT",
+    "CHZUSDT", "ENJUSDT", "ZILUSDT", "IOTAUSDT", "ONEUSDT",
+    "ANKRUSDT", "CRVUSDT", "COMPUSDT", "SNXUSDT", "MKRUSDT",
+    "SUSHIUSDT", "YFIUSDT", "BALUSDT", "RENUSDT", "KNCUSDT",
+    "ZRXUSDT", "OMGUSDT", "BATUSDT", "LRCUSDT", "STORJUSDT",
+    "OCEANUSDT", "FETUSDT", "RNDRUSDT", "AGIXUSDT", "ARUSDT",
+    "KSMUSDT", "KAVAUSDT", "RUNEUSDT", "WAVESUSDT", "CELOUSDT",
+    "BANDUSDT", "NMRUSDT", "CTSIUSDT", "CVCUSDT", "DENTUSDT",
+    "HOTUSDT", "IOSTUSDT", "IOTXUSDT", "MTLUSDT", "NKNUSDT",
+    "OGNUSDT", "POLYUSDT", "REQUSDT", "RLCUSDT", "TRBUSDT",
+    "UMAUSDT", "XEMUSDT", "XTZUSDT", "YFIIUSDT", "ZENUSDT",
+    "DASHUSDT", "DCRUSDT", "LSKUSDT", "NEOUSDT", "QTUMUSDT",
+    "RVNUSDT", "SCUSDT", "WTCUSDT", "ZECUSDT", "ZRXUSDT"
 ]
+
+# حذف تکراری‌ها
+SYMBOLS = list(dict.fromkeys(SYMBOLS))
+
 INTERVAL = "15min"
 HTF_INTERVAL = "4hour"
 
@@ -29,8 +51,8 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 ADX_THRESHOLD = 20
-VOLUME_MULT = 1.0
-MIN_SCORE = 3
+VOLUME_MULT = 1.2
+MIN_SCORE = 4
 
 RSI_LONG_MIN = 30
 RSI_LONG_MAX = 65
@@ -39,7 +61,7 @@ RSI_SHORT_MAX = 70
 RSI_REVERSAL_LONG = 30
 RSI_REVERSAL_SHORT = 70
 
-SEND_DIAGNOSTIC = True
+SEND_DIAGNOSTIC = False  # برای ۱۰۰ ارز، گزارش تشخیصی رو خاموش کن
 
 
 def get_klines(symbol, interval="15min"):
@@ -49,7 +71,6 @@ def get_klines(symbol, interval="15min"):
         r = requests.get(url, timeout=10)
         data = r.json()
         if data.get("code") != "200000":
-            print("خطا در دریافت داده " + symbol)
             return None
         candles = data["data"]
         df = pd.DataFrame(candles, columns=[
@@ -59,8 +80,7 @@ def get_klines(symbol, interval="15min"):
             df[c] = df[c].astype(float)
         df = df.iloc[::-1].reset_index(drop=True)
         return df
-    except Exception as e:
-        print("خطا: " + str(e))
+    except Exception:
         return None
 
 
@@ -104,7 +124,7 @@ def build_message(sig, now, signal_type):
         "━━━━━━━━━━━━━━━━━━\n"
         "📌 <b>ارز:</b> " + sig["symbol"] + "\n"
         "💰 <b>قیمت ورود:</b> " + str(sig["price"]) + "\n"
-        "⭐ <b>امتیاز تأیید:</b> " + str(sig["score"]) + "/5\n"
+        "⭐ <b>امتیاز تأیید:</b> " + str(sig["score"]) + "/6\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "<b>📊 دلایل سیگنال:</b>\n" + reasons_text + "\n"
         "━━━━━━━━━━━━━━━━━━\n"
@@ -146,35 +166,27 @@ def check_signal(df, df_htf, symbol):
 
     last = df.iloc[-2]
     prev = df.iloc[-3]
-    prev2 = df.iloc[-4]
-
     price = last["close"]
     rsi = last["rsi"]
 
-    # ====== ۱. سیگنال برگشت لانگ (RSI اشباع فروش + شروع برگشت) ======
+    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
+    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
+    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+    adx_required = last["adx"] > ADX_THRESHOLD
+
+    # ====== ۱. سیگنال برگشت لانگ ======
     if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
+        macd_required = last["macd"] > last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_up):
+            return None, None, None
+
         reasons = []
-        score = 0
         reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
-        score += 2
-
-        if last["volume"] > (last["vol_ma"] * VOLUME_MULT):
-            score += 1
-            reasons.append("✅ حجم بالا")
-        else:
-            reasons.append("❌ حجم پایین")
-
-        if last["macd"] > last["macd_signal"]:
-            score += 1
-            reasons.append("✅ MACD صعودی")
-        else:
-            reasons.append("❌ MACD نزولی")
-
-        if df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]:
-            score += 1
-            reasons.append("✅ روند ۴ساعته صعودی")
-        else:
-            reasons.append("❌ روند ۴ساعته نزولی")
+        reasons.append("✅ حجم بالا (اجباری)")
+        reasons.append("✅ MACD صعودی (اجباری)")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)) + " (اجباری)")
+        reasons.append("✅ روند ۴ساعته صعودی (اجباری)")
+        score = 5
 
         diagnostic = {"symbol": symbol, "direction": "برگشت لانگ", "score": score,
                       "reasons": reasons, "price": round(price, 4)}
@@ -184,30 +196,19 @@ def check_signal(df, df_htf, symbol):
             return sig, diagnostic, "برگشت"
         return None, diagnostic, None
 
-    # ====== ۲. سیگنال برگشت شورت (RSI اشباع خرید + شروع برگشت) ======
+    # ====== ۲. سیگنال برگشت شورت ======
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
+        macd_required = last["macd"] < last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_down):
+            return None, None, None
+
         reasons = []
-        score = 0
         reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
-        score += 2
-
-        if last["volume"] > (last["vol_ma"] * VOLUME_MULT):
-            score += 1
-            reasons.append("✅ حجم بالا")
-        else:
-            reasons.append("❌ حجم پایین")
-
-        if last["macd"] < last["macd_signal"]:
-            score += 1
-            reasons.append("✅ MACD نزولی")
-        else:
-            reasons.append("❌ MACD صعودی")
-
-        if df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]:
-            score += 1
-            reasons.append("✅ روند ۴ساعته نزولی")
-        else:
-            reasons.append("❌ روند ۴ساعته صعودی")
+        reasons.append("✅ حجم بالا (اجباری)")
+        reasons.append("✅ MACD نزولی (اجباری)")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)) + " (اجباری)")
+        reasons.append("✅ روند ۴ساعته نزولی (اجباری)")
+        score = 5
 
         diagnostic = {"symbol": symbol, "direction": "برگشت شورت", "score": score,
                       "reasons": reasons, "price": round(price, 4)}
@@ -217,22 +218,28 @@ def check_signal(df, df_htf, symbol):
             return sig, diagnostic, "برگشت"
         return None, diagnostic, None
 
-    # ====== ۳. سیگنال کراس معمولی (RSI در محدوده امن) ======
+    # ====== ۳. سیگنال کراس معمولی ======
     cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
     if not (cross_up or cross_down):
         return None, None, None
 
+    if not volume_required:
+        return None, None, None
+
     reasons = []
-    score = 0
 
     if cross_up:
+        macd_required = last["macd"] > last["macd_signal"]
+        if not macd_required:
+            return None, None, None
+
         rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
-        adx_ok = last["adx"] > ADX_THRESHOLD
-        vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-        macd_ok = last["macd"] > last["macd_signal"]
-        trend_ok = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
+        score = 3
+        reasons.append("✅ کراس صعودی EMA9/21")
+        reasons.append("✅ حجم بالا (اجباری)")
+        reasons.append("✅ MACD صعودی (اجباری)")
 
         if rsi_ok:
             score += 1
@@ -240,25 +247,13 @@ def check_signal(df, df_htf, symbol):
         else:
             reasons.append("❌ RSI = " + str(round(rsi, 2)) + " (خارج از محدوده)")
 
-        if adx_ok:
+        if adx_required:
             score += 1
             reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
         else:
             reasons.append("❌ ADX = " + str(round(last["adx"], 2)))
 
-        if vol_ok:
-            score += 1
-            reasons.append("✅ حجم بالا")
-        else:
-            reasons.append("❌ حجم پایین")
-
-        if macd_ok:
-            score += 1
-            reasons.append("✅ MACD صعودی")
-        else:
-            reasons.append("❌ MACD نزولی")
-
-        if trend_ok:
+        if htf_up:
             score += 1
             reasons.append("✅ روند ۴ساعته صعودی")
         else:
@@ -273,11 +268,15 @@ def check_signal(df, df_htf, symbol):
         return None, diagnostic, None
 
     if cross_down:
+        macd_required = last["macd"] < last["macd_signal"]
+        if not macd_required:
+            return None, None, None
+
         rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-        adx_ok = last["adx"] > ADX_THRESHOLD
-        vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-        macd_ok = last["macd"] < last["macd_signal"]
-        trend_ok = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+        score = 3
+        reasons.append("✅ کراس نزولی EMA9/21")
+        reasons.append("✅ حجم بالا (اجباری)")
+        reasons.append("✅ MACD نزولی (اجباری)")
 
         if rsi_ok:
             score += 1
@@ -285,25 +284,13 @@ def check_signal(df, df_htf, symbol):
         else:
             reasons.append("❌ RSI = " + str(round(rsi, 2)) + " (خارج از محدوده)")
 
-        if adx_ok:
+        if adx_required:
             score += 1
             reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
         else:
             reasons.append("❌ ADX = " + str(round(last["adx"], 2)))
 
-        if vol_ok:
-            score += 1
-            reasons.append("✅ حجم بالا")
-        else:
-            reasons.append("❌ حجم پایین")
-
-        if macd_ok:
-            score += 1
-            reasons.append("✅ MACD نزولی")
-        else:
-            reasons.append("❌ MACD صعودی")
-
-        if trend_ok:
+        if htf_down:
             score += 1
             reasons.append("✅ روند ۴ساعته نزولی")
         else:
@@ -324,47 +311,35 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     signals_found = 0
-    diagnostics = []
+    processed = 0
 
     for symbol in SYMBOLS:
-        df = get_klines(symbol, INTERVAL)
-        df_htf = get_klines(symbol, HTF_INTERVAL)
-        if df is None or df_htf is None:
+        try:
+            df = get_klines(symbol, INTERVAL)
+            time.sleep(0.15)
+            df_htf = get_klines(symbol, HTF_INTERVAL)
+            time.sleep(0.15)
+
+            if df is None or df_htf is None:
+                continue
+
+            df = calc_indicators(df)
+            df_htf = calc_indicators(df_htf)
+            sig, diag, signal_type = check_signal(df, df_htf, symbol)
+
+            processed += 1
+
+            if sig:
+                signals_found += 1
+                msg = build_message(sig, now, signal_type)
+                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                print("سیگنال ارسال شد: " + symbol + " | " + signal_type)
+
+        except Exception as e:
+            print("خطا در " + symbol + ": " + str(e))
             continue
-        df = calc_indicators(df)
-        df_htf = calc_indicators(df_htf)
-        sig, diag, signal_type = check_signal(df, df_htf, symbol)
 
-        if diag:
-            diagnostics.append(diag)
-
-        if sig:
-            signals_found += 1
-            msg = build_message(sig, now, signal_type)
-            await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-            print("سیگنال ارسال شد: " + symbol + " | " + signal_type)
-
-    if signals_found == 0:
-        print(now + " | سیگنالی پیدا نشد")
-        if SEND_DIAGNOSTIC and diagnostics:
-            report = "📋 <b>گزارش تشخیصی - " + now + "</b>\n"
-            report += "⏱ تایم‌فریم: " + INTERVAL + "\n"
-            report += "━━━━━━━━━━━━━━━━━━\n"
-            report += "<b>سیگنالی با امتیاز ≥ " + str(MIN_SCORE) + " پیدا نشد.</b>\n"
-            report += "وضعیت نمادهای دارای شرایط:\n\n"
-
-            for d in diagnostics:
-                report += "📌 <b>" + d["symbol"] + "</b> (" + d["direction"] + ")\n"
-                report += "⭐ امتیاز: <b>" + str(d["score"]) + "/5</b>\n"
-                report += "💰 قیمت: " + str(d["price"]) + "\n"
-                for r in d["reasons"]:
-                    report += r + "\n"
-                report += "─────────\n"
-
-            await bot.send_message(chat_id=CHAT_ID, text=report, parse_mode="HTML")
-            print("گزارش تشخیصی ارسال شد.")
-    else:
-        print(now + " | " + str(signals_found) + " سیگنال ارسال شد")
+    print(now + " | پردازش شده: " + str(processed) + " | سیگنال: " + str(signals_found))
 
 
 if __name__ == "__main__":
