@@ -27,23 +27,12 @@ NO_SIGNAL_COOLDOWN_MINUTES = 0
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 SYMBOLS = [
-    "OPUSDT", "ZECUSDT", "PUMPUSDT", "WLDUSDT", "TIAUSDT",
-    "PEPEUSDT", "ARBUSDT", "ALLOUSDT", "BOMEUSDT", "APTUSDT",
-    "LABUSDT", "FLOKIUSDT", "UNIUSDT", "FILUSDT", "KAITOUSDT",
-    "TAOUSDT", "BONKUSDT", "ORDIUSDT", "NEARUSDT", "STXUSDT",
-    "SHIBUSDT", "XLMUSDT", "NOTUSDT", "AVAXUSDT", "DOGEUSDT",
-    "AAVEUSDT", "LDOUSDT", "ATOMUSDT", "KASUSDT", "PYTHUSDT",
-    "ADAUSDT", "SUIUSDT", "BMTUSDT", "ETHFIUSDT", "XRPUSDT",
-    "WIFUSDT", "JASMYUSDT", "LUNCUSDT", "HMSTRUSDT", "HBARUSDT",
-    "POLUSDT", "HEMIUSDT", "HEIUSDT", "SEIUSDT", "JUPUSDT",
-    "DOTUSDT", "IMXUSDT", "LINKUSDT", "HYPEUSDT", "FETUSDT",
-    "ICPUSDT", "TUTUSDT", "LTCUSDT", "ONDOUSDT", "PROMUSDT",
-    "BRENTOILUSDT", "CAKEUSDT", "RENDERUSDT", "ZROUSDT", "TRXUSDT",
-    "INJUSDT", "GIGGLEUSDT", "XAUTUSDT", "PAXGUSDT", "BNBUSDT",
-    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BCHUSDT", "ALGOUSDT",
-    "GRAMUSDT", "ENAUSDT", "ACEUSDT", "HOMEUSDT"
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
+    "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "LTCUSDT",
+    "ATOMUSDT", "TRXUSDT", "NEARUSDT", "APTUSDT", "SUIUSDT",
+    "UNIUSDT", "AAVEUSDT", "ARBUSDT", "OPUSDT", "INJUSDT",
+    "TIAUSDT", "SEIUSDT", "FILUSDT", "HBARUSDT", "ALGOUSDT"
 ]
-SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
 INTERVAL = "15min"
 TREND_TFS = [
@@ -57,14 +46,15 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 
-ADX_THRESHOLD = 15
-VOLUME_MULT = 1.0
-RSI_LONG_MIN = 35
-RSI_LONG_MAX = 65
-RSI_SHORT_MIN = 35
-RSI_SHORT_MAX = 65
-RSI_REVERSAL_LONG = 30
-RSI_REVERSAL_SHORT = 70
+# ==== تنظیمات آسون ====
+ADX_THRESHOLD = 5
+VOLUME_MULT = 0.1
+RSI_LONG_MIN = 10
+RSI_LONG_MAX = 90
+RSI_SHORT_MIN = 10
+RSI_SHORT_MAX = 90
+RSI_REVERSAL_LONG = 45
+RSI_REVERSAL_SHORT = 55
 
 
 def load_history(file_path):
@@ -84,6 +74,8 @@ def save_history(history, file_path):
 
 
 def is_duplicate(history, symbol, direction, signal_type, cooldown):
+    if cooldown == 0:
+        return False
     key = symbol + "_" + direction + "_" + signal_type
     if key in history:
         try:
@@ -241,36 +233,26 @@ def check_signal(df, df_htf, symbol):
     price = last["close"]
     rsi = last["rsi"]
 
-    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
-    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-    adx_required = last["adx"] > ADX_THRESHOLD
+    # ==== تنظیمات آسون: همه فیلترها غیرفعال ====
+    htf_up = True
+    htf_down = True
+    volume_required = True
+    adx_required = True
+    macd_required = True
 
     # ====== ۱. برگشت لانگ ======
     if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
-        macd_required = last["macd"] > last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_up):
-            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD صعودی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته صعودی")
+        reasons.append("✅ تست: فیلترها غیرفعال")
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "برگشت"
 
     # ====== ۲. برگشت شورت ======
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
-        macd_required = last["macd"] < last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_down):
-            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD نزولی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته نزولی")
+        reasons.append("✅ تست: فیلترها غیرفعال")
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "برگشت"
 
@@ -279,32 +261,16 @@ def check_signal(df, df_htf, symbol):
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
     if cross_up:
-        macd_required = last["macd"] > last["macd_signal"]
-        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
-        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
-            return None, None
         reasons = []
         reasons.append("✅ کراس صعودی EMA9/21")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD صعودی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته صعودی")
-        reasons.append("✅ RSI = " + str(round(rsi, 2)))
+        reasons.append("✅ تست: فیلترها غیرفعال")
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "کراس"
 
     if cross_down:
-        macd_required = last["macd"] < last["macd_signal"]
-        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-        if not (volume_required and macd_required and adx_required and htf_down and rsi_ok):
-            return None, None
         reasons = []
         reasons.append("✅ کراس نزولی EMA9/21")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD نزولی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته نزولی")
-        reasons.append("✅ RSI = " + str(round(rsi, 2)))
+        reasons.append("✅ تست: فیلترها غیرفعال")
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "کراس"
 
@@ -415,7 +381,7 @@ async def main():
                     dist_support = abs((price - support) / price) * 100
                     dist_resistance = abs((resistance - price) / price) * 100
 
-                    if dist_support > 1 and dist_resistance > 1:
+                    if dist_support > 0.5 and dist_resistance > 0.5:
                         if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
                             trends = get_trends_for_symbol(symbol)
                             scenario_history = update_history(scenario_history, symbol, "scenario", "both")
@@ -436,24 +402,19 @@ async def main():
 
     print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
 
-    # ==== پیام وقتی هیچ سیگنالی نیست ====
+    # ==== پیام وقتی هیچ سیگنالی نیست (بدون cooldown) ====
     if signals_found == 0 and scenarios_found == 0:
-        if not is_duplicate(signal_history, "GLOBAL", "none", "no_signal", NO_SIGNAL_COOLDOWN_MINUTES):
-            signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
-            save_history(signal_history, HISTORY_FILE)
-            no_signal_msg = (
-                "📭 <b>گزارش - " + now + "</b>\n"
-                "━━━━━━━━━━━━━━━━━━\n"
-                "✅ پردازش: " + str(processed) + " ارز\n"
-                "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
-                "⏱ تایم‌فریم: " + INTERVAL + "\n"
-                "━━━━━━━━━━━━━━━━━━\n"
-                "⏰ این گزارش خودکار است."
-            )
-            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
-        else:
-            print("پیام 'هیچ سیگنالی نیست' تکراری بود.")
+        no_signal_msg = (
+            "📭 <b>گزارش - " + now + "</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "✅ پردازش: " + str(processed) + " ارز\n"
+            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
+            "⏱ تایم‌فریم: " + INTERVAL + "\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⏰ این گزارش خودکار است."
+        )
+        await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+        print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
 
 
 if __name__ == "__main__":
