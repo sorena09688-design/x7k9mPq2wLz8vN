@@ -45,7 +45,7 @@ SYMBOLS = [
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
-INTERVAL = "30min"
+INTERVAL = "15min"
 TREND_TFS = [
     ("30min", "۳۰ دقیقه"),
     ("2hour", "۲ ساعته"),
@@ -192,6 +192,14 @@ def get_decimals(price):
         return 8
 
 
+def calc_rr(entry, sl, tp):
+    """محاسبه نسبت ریسک به ریوارد"""
+    risk = abs(entry - sl)
+    if risk <= 0:
+        return 0
+    return round(abs(tp - entry) / risk, 2)
+
+
 def build_signal_message(sig, now, signal_type, trends):
     reasons_text = "\n".join(sig["reasons"])
 
@@ -213,9 +221,9 @@ def build_signal_message(sig, now, signal_type, trends):
         "📈 <b>ADX:</b> " + str(sig["adx"]) + "\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "🛑 <b>حد ضرر:</b> " + str(sig["sl"]) + "\n"
-        "🎯 <b>هدف اول:</b> " + str(sig["tp1"]) + "\n"
-        "🎯 <b>هدف دوم:</b> " + str(sig["tp2"]) + "\n"
-        "🎯 <b>هدف سوم:</b> " + str(sig["tp3"]) + "\n"
+        "🎯 <b>هدف اول:</b> " + str(sig["tp1"]) + " | <b>R/R:</b> 1:" + str(sig["rr1"]) + "\n"
+        "🎯 <b>هدف دوم:</b> " + str(sig["tp2"]) + " | <b>R/R:</b> 1:" + str(sig["rr2"]) + "\n"
+        "🎯 <b>هدف سوم:</b> " + str(sig["tp3"]) + " | <b>R/R:</b> 1:" + str(sig["rr3"]) + "\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "⏰ <b>زمان:</b> " + now + "\n"
         "⏱ <b>تایم‌فریم سیگنال:</b> " + INTERVAL
@@ -236,11 +244,17 @@ def make_signal(symbol, price, last, reasons, direction):
         tp1 = round(price - (atr * 1.5), dec)
         tp2 = round(price - (atr * 3), dec)
         tp3 = round(price - (atr * 5), dec)
+
+    rr1 = calc_rr(price, sl, tp1)
+    rr2 = calc_rr(price, sl, tp2)
+    rr3 = calc_rr(price, sl, tp3)
+
     return {
         "type": direction, "symbol": symbol, "price": round(price, dec),
         "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
         "reasons": reasons,
         "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
+        "rr1": rr1, "rr2": rr2, "rr3": rr3,
     }
 
 
@@ -340,7 +354,6 @@ def find_support_resistance(df, lookback=50):
 
 
 def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, trends):
-    # ==== منطق RSI: فقط سناریوی منطقی نشون بده ====
     show_long = rsi < 70
     show_short = rsi > 30
 
@@ -368,13 +381,15 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
         long_sl = round(support - (atr * 1.5), dec)
         long_tp1 = round(support + (atr * 1.5), dec)
         long_tp2 = round(support + (atr * 3), dec)
+        rr1 = calc_rr(long_entry, long_sl, long_tp1)
+        rr2 = calc_rr(long_entry, long_sl, long_tp2)
         msg += (
             "🟢 <b>سناریو لانگ:</b>\n"
             "اگه قیمت به <b>" + str(long_entry) + "</b> رسید (حمایت)\n"
             "→ ورود لانگ\n"
             "→ 🛑 حد ضرر: <b>" + str(long_sl) + "</b>\n"
-            "→ 🎯 هدف اول: <b>" + str(long_tp1) + "</b>\n"
-            "→ 🎯 هدف دوم: <b>" + str(long_tp2) + "</b>\n"
+            "→ 🎯 هدف اول: <b>" + str(long_tp1) + "</b> | <b>R/R:</b> 1:" + str(rr1) + "\n"
+            "→ 🎯 هدف دوم: <b>" + str(long_tp2) + "</b> | <b>R/R:</b> 1:" + str(rr2) + "\n"
             "━━━━━━━━━━━━━━━━━━\n"
         )
 
@@ -383,13 +398,15 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
         short_sl = round(resistance + (atr * 1.5), dec)
         short_tp1 = round(resistance - (atr * 1.5), dec)
         short_tp2 = round(resistance - (atr * 3), dec)
+        rr1 = calc_rr(short_entry, short_sl, short_tp1)
+        rr2 = calc_rr(short_entry, short_sl, short_tp2)
         msg += (
             "🔴 <b>سناریو شورت:</b>\n"
             "اگه قیمت به <b>" + str(short_entry) + "</b> رسید (مقاومت)\n"
             "→ ورود شورت\n"
             "→ 🛑 حد ضرر: <b>" + str(short_sl) + "</b>\n"
-            "→ 🎯 هدف اول: <b>" + str(short_tp1) + "</b>\n"
-            "→ 🎯 هدف دوم: <b>" + str(short_tp2) + "</b>\n"
+            "→ 🎯 هدف اول: <b>" + str(short_tp1) + "</b> | <b>R/R:</b> 1:" + str(rr1) + "\n"
+            "→ 🎯 هدف دوم: <b>" + str(short_tp2) + "</b> | <b>R/R:</b> 1:" + str(rr2) + "\n"
             "━━━━━━━━━━━━━━━━━━\n"
         )
 
