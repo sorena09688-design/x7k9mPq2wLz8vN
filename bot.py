@@ -18,8 +18,7 @@ if not CHAT_ID:
 
 SYMBOLS = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
-    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
-    "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT", "ZECUSDT"
+    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT"
 ]
 INTERVAL = "15min"
 HTF_INTERVAL = "4hour"
@@ -28,23 +27,22 @@ RSI_PERIOD = 14
 EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
-ADX_THRESHOLD = 22
-VOLUME_MULT = 1.2
-RSI_LONG_MIN = 52
-RSI_SHORT_MAX = 48
+ADX_THRESHOLD = 0
+VOLUME_MULT = 0.1
+RSI_LONG_MIN = 0
+RSI_SHORT_MAX = 100
 MIN_SCORE = 0
-
-# اگه True باشه، گزارش تشخیصی هم به تلگرام می‌فرسته
 SEND_DIAGNOSTIC = True
 
 
-def get_klines(symbol, interval="30min"):
+def get_klines(symbol, interval="15min"):
     symbol_kucoin = symbol.replace("USDT", "-USDT")
-    url = f"https://api.kucoin.com/api/v1/market/candles?type={interval}&symbol={symbol_kucoin}"
+    url = "https://api.kucoin.com/api/v1/market/candles?type=" + interval + "&symbol=" + symbol_kucoin
     try:
         r = requests.get(url, timeout=10)
         data = r.json()
         if data.get("code") != "200000":
+            print("خطا در دریافت داده " + symbol)
             return None
         candles = data["data"]
         df = pd.DataFrame(candles, columns=[
@@ -55,7 +53,7 @@ def get_klines(symbol, interval="30min"):
         df = df.iloc[::-1].reset_index(drop=True)
         return df
     except Exception as e:
-        print(f"خطا: {e}")
+        print("خطا: " + str(e))
         return None
 
 
@@ -86,7 +84,6 @@ def calc_indicators(df):
 
     df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
     df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
-    df["macd_hist"] = df["macd"] - df["macd_signal"]
 
     df["vol_ma"] = df["volume"].rolling(20).mean()
 
@@ -94,24 +91,14 @@ def calc_indicators(df):
 
 
 def check_signal(df, df_htf, symbol):
-    """برمی‌گردونه: (signal, diagnostic)"""
-    print(f"[DEBUG] {symbol} | df: {len(df) if df is not None else 'None'} | df_htf: {len(df_htf) if df_htf is not None else 'None'}")
-
-if df is None or df_htf is None:
-    print(f"[DEBUG] {symbol} | داده None است")
-    return None, None
-
-if len(df) < 3:
-    print(f"[DEBUG] {symbol} | df کمتر از 3 کندل")
-    return None, None
-
-if len(df_htf) < 100:
-    print(f"[DEBUG] {symbol} | df_htf کمتر از 100 کندل: {len(df_htf)}")
-    return None, None
+    if df is None or df_htf is None:
+        return None, None
+    if len(df) < 3 or len(df_htf) < 50:
+        return None, None
 
     last = df.iloc[-2]
-    prev = df.iloc[-3]
 
+    # ==== نسخه تست: بدون نیاز به کراس، فقط موقعیت EMA ====
     cross_up = last["ema_fast"] > last["ema_slow"]
     cross_down = last["ema_fast"] < last["ema_slow"]
 
@@ -122,30 +109,11 @@ if len(df_htf) < 100:
     reasons = []
     score = 0
 
-    rsi_ok_long = last["rsi"] > RSI_LONG_MIN
-    rsi_ok_short = last["rsi"] < RSI_SHORT_MAX
-    vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-    adx_ok = last["adx"] > ADX_THRESHOLD
-    macd_ok_long = last["macd"] > last["macd_signal"]
-    macd_ok_short = last["macd"] < last["macd_signal"]
-    trend_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
-    trend_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-
     if cross_up:
-        if rsi_ok_long: score += 1; reasons.append(f"✅ RSI = {round(last['rsi'], 2)} (بالای {RSI_LONG_MIN})")
-        else: reasons.append(f"❌ RSI = {round(last['rsi'], 2)} (زیر {RSI_LONG_MIN})")
-
-        if adx_ok: score += 1; reasons.append(f"✅ ADX = {round(last['adx'], 2)} (روند قوی)")
-        else: reasons.append(f"❌ ADX = {round(last['adx'], 2)} (روند ضعیف)")
-
-        if vol_ok: score += 1; reasons.append(f"✅ حجم = {round(last['volume']/last['vol_ma'], 2)}x میانگین")
-        else: reasons.append(f"❌ حجم پایین ({round(last['volume']/last['vol_ma'], 2)}x)")
-
-        if macd_ok_long: score += 1; reasons.append(f"✅ MACD صعودی")
-        else: reasons.append(f"❌ MACD نزولی")
-
-        if trend_up: score += 1; reasons.append(f"✅ روند ۴ساعته صعودی (بالای EMA200)")
-        else: reasons.append(f"❌ روند ۴ساعته نزولی")
+        score = 3
+        reasons.append("✅ EMA9 بالای EMA21")
+        reasons.append("✅ RSI = " + str(round(last["rsi"], 2)))
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
 
         diagnostic = {
             "symbol": symbol, "direction": "لانگ", "score": score,
@@ -159,28 +127,16 @@ if len(df_htf) < 100:
             return {
                 "type": "لانگ 🟢", "symbol": symbol, "price": round(price, 4),
                 "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
-                "ema_fast": round(last["ema_fast"], 4), "ema_slow": round(last["ema_slow"], 4),
                 "score": score, "reasons": reasons,
                 "sl": sl, "tp1": tp1, "tp2": tp2,
-                "vol_ratio": round(last["volume"]/last["vol_ma"], 2)
             }, diagnostic
         return None, diagnostic
 
     if cross_down:
-        if rsi_ok_short: score += 1; reasons.append(f"✅ RSI = {round(last['rsi'], 2)} (زیر {RSI_SHORT_MAX})")
-        else: reasons.append(f"❌ RSI = {round(last['rsi'], 2)} (بالای {RSI_SHORT_MAX})")
-
-        if adx_ok: score += 1; reasons.append(f"✅ ADX = {round(last['adx'], 2)} (روند قوی)")
-        else: reasons.append(f"❌ ADX = {round(last['adx'], 2)} (روند ضعیف)")
-
-        if vol_ok: score += 1; reasons.append(f"✅ حجم = {round(last['volume']/last['vol_ma'], 2)}x میانگین")
-        else: reasons.append(f"❌ حجم پایین ({round(last['volume']/last['vol_ma'], 2)}x)")
-
-        if macd_ok_short: score += 1; reasons.append(f"✅ MACD نزولی")
-        else: reasons.append(f"❌ MACD صعودی")
-
-        if trend_down: score += 1; reasons.append(f"✅ روند ۴ساعته نزولی (زیر EMA200)")
-        else: reasons.append(f"❌ روند ۴ساعته صعودی")
+        score = 3
+        reasons.append("✅ EMA9 زیر EMA21")
+        reasons.append("✅ RSI = " + str(round(last["rsi"], 2)))
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
 
         diagnostic = {
             "symbol": symbol, "direction": "شورت", "score": score,
@@ -194,10 +150,8 @@ if len(df_htf) < 100:
             return {
                 "type": "شورت 🔴", "symbol": symbol, "price": round(price, 4),
                 "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
-                "ema_fast": round(last["ema_fast"], 4), "ema_slow": round(last["ema_slow"], 4),
                 "score": score, "reasons": reasons,
                 "sl": sl, "tp1": tp1, "tp2": tp2,
-                "vol_ratio": round(last["volume"]/last["vol_ma"], 2)
             }, diagnostic
         return None, diagnostic
 
@@ -226,54 +180,49 @@ async def main():
             signals_found += 1
             reasons_text = "\n".join(sig["reasons"])
             msg = (
-                f"🚨 <b>سیگنال {sig['type']}</b>\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"📌 <b>ارز:</b> {sig['symbol']}\n"
-                f"💰 <b>قیمت ورود:</b> {sig['price']}\n"
-                f"⭐ <b>امتیاز تأیید:</b> {sig['score']}/5\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"<b>📊 دلایل سیگنال:</b>\n{reasons_text}\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"📉 <b>EMA{EMA_FAST}:</b> {sig['ema_fast']}\n"
-                f"📈 <b>EMA{EMA_SLOW}:</b> {sig['ema_slow']}\n"
-                f"📊 <b>RSI:</b> {sig['rsi']}\n"
-                f"📈 <b>ADX:</b> {sig['adx']}\n"
-                f"📊 <b>نسبت حجم:</b> {sig['vol_ratio']}x\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"🛑 <b>حد ضرر:</b> {sig['sl']}\n"
-                f"🎯 <b>هدف اول:</b> {sig['tp1']}\n"
-                f"🎯 <b>هدف دوم:</b> {sig['tp2']}\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"⏰ <b>زمان:</b> {now}\n"
-                f"⏱ <b>تایم‌فریم:</b> {INTERVAL} | تأیید: {HTF_INTERVAL}"
+                "🚨 <b>سیگنال " + sig["type"] + "</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "📌 <b>ارز:</b> " + sig["symbol"] + "\n"
+                "💰 <b>قیمت ورود:</b> " + str(sig["price"]) + "\n"
+                "⭐ <b>امتیاز تأیید:</b> " + str(sig["score"]) + "/5\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "<b>📊 دلایل سیگنال:</b>\n" + reasons_text + "\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "📊 <b>RSI:</b> " + str(sig["rsi"]) + "\n"
+                "📈 <b>ADX:</b> " + str(sig["adx"]) + "\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "🛑 <b>حد ضرر:</b> " + str(sig["sl"]) + "\n"
+                "🎯 <b>هدف اول:</b> " + str(sig["tp1"]) + "\n"
+                "🎯 <b>هدف دوم:</b> " + str(sig["tp2"]) + "\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "⏰ <b>زمان:</b> " + now + "\n"
+                "⏱ <b>تایم‌فریم:</b> " + INTERVAL + " | تأیید: " + HTF_INTERVAL
             )
             await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-            print(f"سیگنال ارسال شد: {symbol}")
+            print("سیگنال ارسال شد: " + symbol)
 
-    # ==== گزارش تشخیصی ====
     if signals_found == 0:
-        print(f"{now} | سیگنالی پیدا نشد")
+        print(now + " | سیگنالی پیدا نشد")
         if SEND_DIAGNOSTIC:
-            report = f"📋 <b>گزارش تشخیصی - {now}</b>\n"
-            report += f"⏱ تایم‌فریم: {INTERVAL}\n"
-            report += f"━━━━━━━━━━━━━━━━━━\n"
-            report += f"<b>سیگنالی با امتیاز ≥ {MIN_SCORE} پیدا نشد.</b>\n"
-            report += f"وضعیت نمادهای دارای کراس:\n\n"
+            report = "📋 <b>گزارش تشخیصی - " + now + "</b>\n"
+            report += "⏱ تایم‌فریم: " + INTERVAL + "\n"
+            report += "━━━━━━━━━━━━━━━━━━\n"
+            report += "<b>سیگنالی پیدا نشد.</b>\n"
 
-            for d in diagnostics:
-                report += f"📌 <b>{d['symbol']}</b> ({d['direction']})\n"
-                report += f"⭐ امتیاز: <b>{d['score']}/5</b>\n"
-                report += f"💰 قیمت: {d['price']}\n"
-                for r in d["reasons"]:
-                    report += f"{r}\n"
-                report += "─────────\n"
+            if diagnostics:
+                report += "نمادهای دارای شرایط:\n\n"
+                for d in diagnostics:
+                    report += "📌 <b>" + d["symbol"] + "</b> (" + d["direction"] + ")\n"
+                    report += "⭐ امتیاز: <b>" + str(d["score"]) + "/5</b>\n"
+                    report += "💰 قیمت: " + str(d["price"]) + "\n"
+                    report += "─────────\n"
+            else:
+                report += "هیچ نمادی شرایط اولیه رو نداشت."
 
-            report += "⏰ این گزارش خودکار است."
             await bot.send_message(chat_id=CHAT_ID, text=report, parse_mode="HTML")
             print("گزارش تشخیصی ارسال شد.")
-
     else:
-        print(f"{now} | {signals_found} سیگنال ارسال شد")
+        print(now + " | " + str(signals_found) + " سیگنال ارسال شد")
 
 
 if __name__ == "__main__":
