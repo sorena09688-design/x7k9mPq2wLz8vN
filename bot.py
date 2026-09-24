@@ -95,7 +95,18 @@ def calc_indicators(df):
 
 def check_signal(df, df_htf, symbol):
     """برمی‌گردونه: (signal, diagnostic)"""
-    if len(df) < 3 or df_htf is None or len(df_htf) < 100:
+    print(f"[DEBUG] {symbol} | df: {len(df) if df is not None else 'None'} | df_htf: {len(df_htf) if df_htf is not None else 'None'}")
+
+if df is None or df_htf is None:
+    print(f"[DEBUG] {symbol} | داده None است")
+    return None, None
+
+if len(df) < 3:
+    print(f"[DEBUG] {symbol} | df کمتر از 3 کندل")
+    return None, None
+
+if len(df_htf) < 100:
+    print(f"[DEBUG] {symbol} | df_htf کمتر از 100 کندل: {len(df_htf)}")
     return None, None
 
     last = df.iloc[-2]
