@@ -22,30 +22,26 @@ HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
 COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
+NO_SIGNAL_COOLDOWN_MINUTES = 60
 
 IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
-    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
-    "LTCUSDT", "ATOMUSDT", "UNIUSDT", "AAVEUSDT", "ZECUSDT",
-    "TRXUSDT", "MATICUSDT", "ETCUSDT", "FILUSDT", "APTUSDT",
-    "ARBUSDT", "OPUSDT", "NEARUSDT", "INJUSDT", "SUIUSDT",
-    "SEIUSDT", "TIAUSDT", "IMXUSDT", "GRTUSDT", "SANDUSDT",
-    "MANAUSDT", "AXSUSDT", "FTMUSDT", "ALGOUSDT", "EOSUSDT",
-    "XLMUSDT", "VETUSDT", "THETAUSDT", "EGLDUSDT", "FLOWUSDT",
-    "CHZUSDT", "ENJUSDT", "ZILUSDT", "IOTAUSDT", "ONEUSDT",
-    "ANKRUSDT", "CRVUSDT", "COMPUSDT", "SNXUSDT", "MKRUSDT",
-    "SUSHIUSDT", "YFIUSDT", "BALUSDT", "RENUSDT", "KNCUSDT",
-    "ZRXUSDT", "OMGUSDT", "BATUSDT", "LRCUSDT", "STORJUSDT",
-    "OCEANUSDT", "FETUSDT", "RNDRUSDT", "AGIXUSDT", "ARUSDT",
-    "KSMUSDT", "KAVAUSDT", "RUNEUSDT", "WAVESUSDT", "CELOUSDT",
-    "BANDUSDT", "NMRUSDT", "CTSIUSDT", "CVCUSDT", "DENTUSDT",
-    "HOTUSDT", "IOSTUSDT", "IOTXUSDT", "MTLUSDT", "NKNUSDT",
-    "OGNUSDT", "POLYUSDT", "REQUSDT", "RLCUSDT", "TRBUSDT",
-    "UMAUSDT", "XEMUSDT", "XTZUSDT", "YFIIUSDT", "ZENUSDT",
-    "DASHUSDT", "DCRUSDT", "LSKUSDT", "NEOUSDT", "QTUMUSDT",
-    "RVNUSDT", "SCUSDT", "WTCUSDT", "ZECUSDT", "ZRXUSDT"
+    "OPUSDT", "ZECUSDT", "PUMPUSDT", "WLDUSDT", "TIAUSDT",
+    "PEPEUSDT", "ARBUSDT", "ALLOUSDT", "BOMEUSDT", "APTUSDT",
+    "LABUSDT", "FLOKIUSDT", "UNIUSDT", "FILUSDT", "KAITOUSDT",
+    "TAOUSDT", "BONKUSDT", "ORDIUSDT", "NEARUSDT", "STXUSDT",
+    "SHIBUSDT", "XLMUSDT", "NOTUSDT", "AVAXUSDT", "DOGEUSDT",
+    "AAVEUSDT", "LDOUSDT", "ATOMUSDT", "KASUSDT", "PYTHUSDT",
+    "ADAUSDT", "SUIUSDT", "BMTUSDT", "ETHFIUSDT", "XRPUSDT",
+    "WIFUSDT", "JASMYUSDT", "LUNCUSDT", "HMSTRUSDT", "HBARUSDT",
+    "POLUSDT", "HEMIUSDT", "HEIUSDT", "SEIUSDT", "JUPUSDT",
+    "DOTUSDT", "IMXUSDT", "LINKUSDT", "HYPEUSDT", "FETUSDT",
+    "ICPUSDT", "TUTUSDT", "LTCUSDT", "ONDOUSDT", "PROMUSDT",
+    "BRENTOILUSDT", "CAKEUSDT", "RENDERUSDT", "ZROUSDT", "TRXUSDT",
+    "INJUSDT", "GIGGLEUSDT", "XAUTUSDT", "PAXGUSDT", "BNBUSDT",
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BCHUSDT", "ALGOUSDT",
+    "GRAMUSDT", "ENAUSDT", "ACEUSDT", "HOMEUSDT"
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
@@ -61,7 +57,6 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 
-# ==== فیلترهای اصلی ====
 ADX_THRESHOLD = 25
 VOLUME_MULT = 1.3
 RSI_LONG_MIN = 35
@@ -70,8 +65,6 @@ RSI_SHORT_MIN = 35
 RSI_SHORT_MAX = 65
 RSI_REVERSAL_LONG = 30
 RSI_REVERSAL_SHORT = 70
-
-SEND_DIAGNOSTIC = False
 
 
 def load_history(file_path):
@@ -180,7 +173,7 @@ def get_trends_for_symbol(symbol):
     trends = {}
     for tf_code, tf_name in TREND_TFS:
         df = get_klines(symbol, tf_code)
-        time.sleep(0.12)
+        time.sleep(0.1)
         trend, diff = get_trend(df)
         trends[tf_name] = (trend, diff)
     return trends
@@ -321,19 +314,14 @@ def check_signal(df, df_htf, symbol):
 def find_support_resistance(df, lookback=50):
     if df is None or len(df) < lookback:
         return None, None
-
     recent = df.iloc[-lookback:]
     current_price = recent["close"].iloc[-1]
-
     lows = recent["low"].values
     highs = recent["high"].values
-
     support_candidates = [x for x in lows if x < current_price * 0.995]
     resistance_candidates = [x for x in highs if x > current_price * 1.005]
-
     support = max(support_candidates) if support_candidates else current_price * 0.98
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.02
-
     return support, resistance
 
 
@@ -394,9 +382,9 @@ async def main():
     for symbol in SYMBOLS:
         try:
             df = get_klines(symbol, INTERVAL)
-            time.sleep(0.12)
+            time.sleep(0.1)
             df_htf = get_klines(symbol, "4hour")
-            time.sleep(0.12)
+            time.sleep(0.1)
 
             if df is None or df_htf is None:
                 continue
@@ -450,17 +438,22 @@ async def main():
 
     # ==== پیام وقتی هیچ سیگنالی نیست ====
     if signals_found == 0 and scenarios_found == 0:
-        no_signal_msg = (
-            "📭 <b>گزارش - " + now + "</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "✅ پردازش: " + str(processed) + " ارز\n"
-            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
-            "⏱ تایم‌فریم: " + INTERVAL + "\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "⏰ این گزارش خودکار است."
-        )
-        await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-        print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+        if not is_duplicate(signal_history, "GLOBAL", "none", "no_signal", NO_SIGNAL_COOLDOWN_MINUTES):
+            signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
+            save_history(signal_history, HISTORY_FILE)
+            no_signal_msg = (
+                "📭 <b>گزارش - " + now + "</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "✅ پردازش: " + str(processed) + " ارز\n"
+                "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
+                "⏱ تایم‌فریم: " + INTERVAL + "\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "⏰ این گزارش خودکار است."
+            )
+            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+        else:
+            print("پیام 'هیچ سیگنالی نیست' تکراری بود.")
 
 
 if __name__ == "__main__":
