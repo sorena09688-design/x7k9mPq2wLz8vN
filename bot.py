@@ -78,16 +78,17 @@ def check_signal(df, df_htf, symbol):
         return None
     last = df.iloc[-2]
     prev = df.iloc[-3]
-    cross_up = last["ema_fast"] > last["ema_slow"]
-    cross_down = last["ema_fast"] < last["ema_slow"]
+    cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
+    cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
     if not (cross_up or cross_down):
         return None
     rsi_long = last["rsi"] > 52
     rsi_short = last["rsi"] < 48
     vol_ok = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
     adx_ok = last["adx"] > ADX_THRESHOLD
-    htf_up = True
-    htf_down = True
+    # روند کلی در 4 ساعته: فقط قیمت بالای EMA 50 یا زیرش
+    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_slow"].iloc[-1]
+    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_slow"].iloc[-1]
     price = last["close"]
     if cross_up and rsi_long and vol_ok and adx_ok and htf_up:
         return {"type": "لانگ 🟢", "symbol": symbol, "price": round(price, 4),
