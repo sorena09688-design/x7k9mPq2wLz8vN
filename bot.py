@@ -20,7 +20,7 @@ if not CHAT_ID:
 
 HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
-COOLDOWN_MINUTES = 15
+COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
 
 SYMBOLS = [
@@ -59,15 +59,15 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 
-# ==== شرایط تست (آسون) ====
-ADX_THRESHOLD = 10
-VOLUME_MULT = 0.8
-RSI_LONG_MIN = 20
-RSI_LONG_MAX = 80
-RSI_SHORT_MIN = 20
-RSI_SHORT_MAX = 80
-RSI_REVERSAL_LONG = 40
-RSI_REVERSAL_SHORT = 60
+# ==== فیلترهای اصلی ====
+ADX_THRESHOLD = 25
+VOLUME_MULT = 1.3
+RSI_LONG_MIN = 35
+RSI_LONG_MAX = 65
+RSI_SHORT_MIN = 35
+RSI_SHORT_MAX = 65
+RSI_REVERSAL_LONG = 30
+RSI_REVERSAL_SHORT = 70
 
 SEND_DIAGNOSTIC = False
 
@@ -245,26 +245,37 @@ def check_signal(df, df_htf, symbol):
     price = last["close"]
     rsi = last["rsi"]
 
-    # ==== فیلترهای تست (غیرفعال) ====
-    htf_up = True
-    htf_down = True
-    volume_required = True
-    adx_required = True
-    macd_required = True
+    # ==== فیلترهای اجباری ====
+    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
+    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
+    adx_required = last["adx"] > ADX_THRESHOLD
 
     # ====== ۱. برگشت لانگ ======
     if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
+        macd_required = last["macd"] > last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_up):
+            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته صعودی")
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "برگشت"
 
     # ====== ۲. برگشت شورت ======
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
+        macd_required = last["macd"] < last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_down):
+            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD نزولی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته نزولی")
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "برگشت"
 
@@ -273,16 +284,32 @@ def check_signal(df, df_htf, symbol):
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
     if cross_up:
+        macd_required = last["macd"] > last["macd_signal"]
+        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
+        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
+            return None, None
         reasons = []
         reasons.append("✅ کراس صعودی EMA9/21")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته صعودی")
+        reasons.append("✅ RSI = " + str(round(rsi, 2)))
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "کراس"
 
     if cross_down:
+        macd_required = last["macd"] < last["macd_signal"]
+        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
+        if not (volume_required and macd_required and adx_required and htf_down and rsi_ok):
+            return None, None
         reasons = []
         reasons.append("✅ کراس نزولی EMA9/21")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD نزولی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته نزولی")
+        reasons.append("✅ RSI = " + str(round(rsi, 2)))
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "کراس"
 
@@ -398,7 +425,7 @@ async def main():
                     dist_support = abs((price - support) / price) * 100
                     dist_resistance = abs((resistance - price) / price) * 100
 
-                    if dist_support > 0.5 and dist_resistance > 0.5:
+                    if dist_support > 1 and dist_resistance > 1:
                         if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
                             trends = get_trends_for_symbol(symbol)
                             scenario_history = update_history(scenario_history, symbol, "scenario", "both")
