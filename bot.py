@@ -32,7 +32,7 @@ ADX_THRESHOLD = 22
 VOLUME_MULT = 1.2
 RSI_LONG_MIN = 52
 RSI_SHORT_MAX = 48
-MIN_SCORE = 3
+MIN_SCORE = 0
 
 # اگه True باشه، گزارش تشخیصی هم به تلگرام می‌فرسته
 SEND_DIAGNOSTIC = True
