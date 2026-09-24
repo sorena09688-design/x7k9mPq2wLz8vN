@@ -46,7 +46,7 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 
-# ==== تنظیمات آسون ====
+# ==== تنظیمات متوسط ====
 ADX_THRESHOLD = 18
 VOLUME_MULT = 1.0
 RSI_LONG_MIN = 30
@@ -233,26 +233,37 @@ def check_signal(df, df_htf, symbol):
     price = last["close"]
     rsi = last["rsi"]
 
-    # ==== تنظیمات آسون: همه فیلترها غیرفعال ====
-    htf_up = True
-    htf_down = True
-    volume_required = True
-    adx_required = True
-    macd_required = True
+    # ==== فیلترهای فعال (متوسط) ====
+    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
+    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
+    adx_required = last["adx"] > ADX_THRESHOLD
 
     # ====== ۱. برگشت لانگ ======
     if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
+        macd_required = last["macd"] > last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_up):
+            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته صعودی")
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "برگشت"
 
     # ====== ۲. برگشت شورت ======
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
+        macd_required = last["macd"] < last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_down):
+            return None, None
         reasons = []
         reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD نزولی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته نزولی")
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "برگشت"
 
@@ -261,16 +272,32 @@ def check_signal(df, df_htf, symbol):
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
     if cross_up:
+        macd_required = last["macd"] > last["macd_signal"]
+        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
+        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
+            return None, None
         reasons = []
         reasons.append("✅ کراس صعودی EMA9/21")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته صعودی")
+        reasons.append("✅ RSI = " + str(round(rsi, 2)))
         sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
         return sig, "کراس"
 
     if cross_down:
+        macd_required = last["macd"] < last["macd_signal"]
+        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
+        if not (volume_required and macd_required and adx_required and htf_down and rsi_ok):
+            return None, None
         reasons = []
         reasons.append("✅ کراس نزولی EMA9/21")
-        reasons.append("✅ تست: فیلترها غیرفعال")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD نزولی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته نزولی")
+        reasons.append("✅ RSI = " + str(round(rsi, 2)))
         sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
         return sig, "کراس"
 
@@ -402,7 +429,6 @@ async def main():
 
     print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
 
-    # ==== پیام وقتی هیچ سیگنالی نیست (بدون cooldown) ====
     if signals_found == 0 and scenarios_found == 0:
         no_signal_msg = (
             "📭 <b>گزارش - " + now + "</b>\n"
