@@ -6,7 +6,7 @@ import numpy as np
 from telegram import Bot
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHAT_ID = os.environ.get('CHAT_ID')
@@ -22,6 +22,8 @@ HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
 COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
+
+IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 SYMBOLS = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
@@ -93,7 +95,8 @@ def is_duplicate(history, symbol, direction, signal_type, cooldown):
     if key in history:
         try:
             last_time = datetime.strptime(history[key], "%Y-%m-%d %H:%M:%S")
-            diff_minutes = (datetime.now() - last_time).total_seconds() / 60
+            now_iran = datetime.now(IRAN_TZ).replace(tzinfo=None)
+            diff_minutes = (now_iran - last_time).total_seconds() / 60
             if diff_minutes < cooldown:
                 return True
         except:
@@ -103,7 +106,7 @@ def is_duplicate(history, symbol, direction, signal_type, cooldown):
 
 def update_history(history, symbol, direction, signal_type):
     key = symbol + "_" + direction + "_" + signal_type
-    history[key] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    history[key] = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
     return history
 
 
@@ -245,7 +248,6 @@ def check_signal(df, df_htf, symbol):
     price = last["close"]
     rsi = last["rsi"]
 
-    # ==== فیلترهای اجباری ====
     htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
     htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
     volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
@@ -373,7 +375,7 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
         "→ 🎯 هدف دوم: <b>" + str(short_tp2) + "</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "⚠️ <b>توجه:</b> این سناریو شرطیه، نه پیش‌بینی.\n"
-        "⏰ " + datetime.now().strftime("%Y-%m-%d %H:%M")
+        "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
     )
     return msg
 
@@ -382,7 +384,7 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     signal_history = load_history(HISTORY_FILE)
     scenario_history = load_history(SCENARIO_HISTORY_FILE)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
 
     signals_found = 0
     scenarios_found = 0
@@ -445,6 +447,20 @@ async def main():
     save_history(scenario_history, SCENARIO_HISTORY_FILE)
 
     print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
+
+    # ==== پیام وقتی هیچ سیگنالی نیست ====
+    if signals_found == 0 and scenarios_found == 0:
+        no_signal_msg = (
+            "📭 <b>گزارش - " + now + "</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "✅ پردازش: " + str(processed) + " ارز\n"
+            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
+            "⏱ تایم‌فریم: " + INTERVAL + "\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⏰ این گزارش خودکار است."
+        )
+        await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+        print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
 
 
 if __name__ == "__main__":
