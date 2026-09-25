@@ -1,18 +1,1 @@
-{
-  "ETHFIUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 0.6646,
-    "sl": 0.67412,
-    "tp1": 0.65507,
-    "tp2": 0.64555,
-    "tp3": 0.63285,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1019,
-    "created": "2026-09-25 06:31:17",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 2,
-    "last_validity_check": "2026-09-25 07:32:31"
-  }
-}
+{}
