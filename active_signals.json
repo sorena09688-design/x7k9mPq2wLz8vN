@@ -14,5 +14,21 @@
     "tp3_hit": false,
     "validity_count": 1,
     "last_validity_check": "2026-09-25 12:32:32"
+  },
+  "GIGGLEUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 41.15,
+    "sl": 40.7782,
+    "tp1": 41.5218,
+    "tp2": 41.8936,
+    "tp3": 42.3893,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1219,
+    "created": "2026-09-25 13:03:12",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
   }
 }
