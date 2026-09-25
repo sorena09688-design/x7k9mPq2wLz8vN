@@ -46,5 +46,21 @@
     "tp3_hit": false,
     "validity_count": 0,
     "last_validity_check": null
+  },
+  "XAUTUSDT": {
+    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+    "price": 4276.5,
+    "sl": 4291.37,
+    "tp1": 4261.63,
+    "tp2": 4246.76,
+    "tp3": 4226.94,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1411,
+    "created": "2026-09-25 19:01:29",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
   }
 }
