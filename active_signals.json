@@ -10,7 +10,7 @@
     "message_id": 1187,
     "created": "2026-09-25 12:01:10",
     "tp1_hit": true,
-    "tp2_hit": false,
+    "tp2_hit": true,
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-09-25 13:36:31"
