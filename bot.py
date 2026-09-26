@@ -1,4 +1,3 @@
-
 import os
 import json
 import requests
@@ -432,9 +431,7 @@ async def check_active_signals(bot, now):
                     await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
                 else:
                     await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                print("سیگنال باطل شد: " + symbol)
-            except Exception as e:
-                print("خطا در ارسال: " + str(e))
+            except: pass
             del data[symbol]
             updated = True
             continue
@@ -554,9 +551,7 @@ async def check_active_signals(bot, now):
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
                     else:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                    print("سیگنال هنوز معتبر: " + symbol)
-                except Exception as e:
-                    print("خطا در ارسال: " + str(e))
+                except: pass
                 info["last_validity_check"] = now_dt.strftime("%Y-%m-%d %H:%M:%S")
                 info["validity_count"] = validity_count + 1
                 updated = True
@@ -617,18 +612,48 @@ async def main():
                 if support and resistance and last["atr"] > 0:
                     dist_support = abs((price - support) / price) * 100
                     dist_resistance = abs((resistance - price) / price) * 100
+
                     if dist_support > 0.5 and dist_resistance > 0.5:
-    if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
-        trends = get_trends_for_symbol(symbol)
-        msg = build_scenario_message(
-            symbol, price, support, resistance,
-            last["atr"], last["rsi"], last["adx"], trends
+                        if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
+                            trends = get_trends_for_symbol(symbol)
+                            msg = build_scenario_message(
+                                symbol, price, support, resistance,
+                                last["atr"], last["rsi"], last["adx"], trends
+                            )
+                            if msg:
+                                scenario_history = update_history(scenario_history, symbol, "scenario", "both")
+                                scenarios_found += 1
+                                try:
+                                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                                    print("سناریو: " + symbol)
+                                except Exception as e:
+                                    print("خطا در ارسال سناریو: " + str(e))
+
+        except Exception as e:
+            print("خطا در " + symbol + ": " + str(e))
+            continue
+
+    save_history(signal_history, HISTORY_FILE)
+    save_history(scenario_history, SCENARIO_HISTORY_FILE)
+
+    print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
+
+    if signals_found == 0 and scenarios_found == 0:
+        no_signal_msg = (
+            "📭 <b>گزارش - " + now + "</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "✅ پردازش: " + str(processed) + " ارز\n"
+            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
+            "⏱ تایم‌فریم: " + INTERVAL + "\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⏰ این گزارش خودکار است."
         )
-        if msg:
-            scenario_history = update_history(scenario_history, symbol, "scenario", "both")
-            scenarios_found += 1
-            try:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                print("سناریو: " + symbol)
-            except Exception as e:
-                print("خطا در ارسال سناریو: " + str(e))
+        try:
+            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+        except Exception as e:
+            print("خطا در ارسال گزارش: " + str(e))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
