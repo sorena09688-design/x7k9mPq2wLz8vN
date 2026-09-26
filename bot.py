@@ -21,9 +21,9 @@ if not CHAT_ID:
 HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
 ACTIVE_SIGNALS_FILE = "active_signals.json"
-
 COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
+NO_SIGNAL_COOLDOWN_MINUTES = 0
 VALIDITY_CHECK_MINUTES = 30
 MAX_VALIDITY_CHECKS = 3
 
@@ -48,9 +48,9 @@ SYMBOLS = [
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
-INTERVAL = "30min"
+INTERVAL = "15min"
 TREND_TFS = [
-    ("1hour", "۱ ساعته"),
+    ("30min", "۳۰ دقیقه"),
     ("2hour", "۲ ساعته"),
     ("4hour", "۴ ساعته")
 ]
@@ -128,7 +128,7 @@ def get_klines(symbol, interval):
         return None
 
 
-def get_current_price(symbol):
+def get_price(symbol):
     try:
         symbol_kucoin = symbol.replace("USDT", "-USDT")
         url = "https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=" + symbol_kucoin
@@ -136,7 +136,7 @@ def get_current_price(symbol):
         data = r.json()
         if data.get("code") == "200000":
             return float(data["data"]["price"])
-    except:
+    except Exception:
         pass
     return None
 
@@ -147,13 +147,16 @@ def calc_indicators(df):
     loss = (-delta.where(delta < 0, 0)).rolling(RSI_PERIOD).mean()
     rs = gain / loss
     df["rsi"] = 100 - (100 / (1 + rs))
+
     df["ema_fast"] = df["close"].ewm(span=EMA_FAST, adjust=False).mean()
     df["ema_slow"] = df["close"].ewm(span=EMA_SLOW, adjust=False).mean()
     df["ema_trend"] = df["close"].ewm(span=EMA_TREND, adjust=False).mean()
+
     df["tr"] = np.maximum(df["high"] - df["low"],
                 np.maximum(abs(df["high"] - df["close"].shift()),
                            abs(df["low"] - df["close"].shift())))
     df["atr"] = df["tr"].rolling(14).mean()
+
     df["up"] = df["high"].diff()
     df["down"] = -df["low"].diff()
     df["plus_dm"] = np.where((df["up"] > df["down"]) & (df["up"] > 0), df["up"], 0)
@@ -162,9 +165,12 @@ def calc_indicators(df):
     df["minus_di"] = 100 * (df["minus_dm"].rolling(14).mean() / df["atr"])
     df["dx"] = 100 * abs(df["plus_di"] - df["minus_di"]) / (df["plus_di"] + df["minus_di"])
     df["adx"] = df["dx"].rolling(14).mean()
+
     df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
     df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
+
     df["vol_ma"] = df["volume"].rolling(20).mean()
+
     return df
 
 
@@ -177,7 +183,8 @@ def get_trend(df):
     diff_pct = ((last_close - last_ema) / last_ema) * 100
     if last_close > last_ema:
         return "صعودی 📈", diff_pct
-    return "نزولی 📉", diff_pct
+    else:
+        return "نزولی 📉", diff_pct
 
 
 def get_trends_for_symbol(symbol):
@@ -197,7 +204,8 @@ def get_decimals(price):
         return 4
     elif price >= 0.01:
         return 5
-    return 8
+    else:
+        return 8
 
 
 def calc_rr(entry, sl, tp):
@@ -207,191 +215,23 @@ def calc_rr(entry, sl, tp):
     return round(abs(tp - entry) / risk, 2)
 
 
-def find_support_resistance(df, lookback=50):
-    if df is None or len(df) < lookback:
-        return None, None
-    recent = df.iloc[-lookback:]
-    current_price = recent["close"].iloc[-1]
-    lows = recent["low"].values
-    highs = recent["high"].values
-    support_candidates = [x for x in lows if x < current_price * 0.998]
-    resistance_candidates = [x for x in highs if x > current_price * 1.002]
-    support = max(support_candidates) if support_candidates else current_price * 0.97
-    resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
-    return support, resistance
-
-
-def make_signal(symbol, price, last, reasons, direction):
-    dec = get_decimals(price)
-    atr = last["atr"]
-    if direction == "لانگ 🟢":
-        sl = round(price - (atr * 1.5), dec)
-        tp1 = round(price + (atr * 1.5), dec)
-        tp2 = round(price + (atr * 3), dec)
-        tp3 = round(price + (atr * 5), dec)
-    else:
-        sl = round(price + (atr * 1.5), dec)
-        tp1 = round(price - (atr * 1.5), dec)
-        tp2 = round(price - (atr * 3), dec)
-        tp3 = round(price - (atr * 5), dec)
-    return {
-        "type": direction, "symbol": symbol, "price": round(price, dec),
-        "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
-        "reasons": reasons, "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
-        "rr1": calc_rr(price, sl, tp1), "rr2": calc_rr(price, sl, tp2), "rr3": calc_rr(price, sl, tp3),
-    }
-
-
-def check_signal(df, df_htf, symbol):
-    if df is None or df_htf is None:
-        return None, None
-    if len(df) < 5 or len(df_htf) < 50:
-        return None, None
-    last = df.iloc[-2]
-    prev = df.iloc[-3]
-    price = last["close"]
-    rsi = last["rsi"]
-    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
-    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-    adx_required = last["adx"] > ADX_THRESHOLD
-
-    if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
-        macd_required = last["macd"] > last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_up):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی"]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "برگشت"
-
-    if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
-        macd_required = last["macd"] < last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_down):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی"]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "برگشت"
-
-    cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
-    cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
-
-    if cross_up:
-        macd_required = last["macd"] > last["macd_signal"]
-        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
-        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
-            return None, None
-        reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
-                   "✅ RSI = " + str(round(rsi, 2))]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
-
-    if cross_down:
-        macd_required = last["macd"] < last["macd_signal"]
-        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-        if not (volume_required and macd_required and adx_required and htf_down and rsi_ok):
-            return None, None
-        reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
-                   "✅ RSI = " + str(round(rsi, 2))]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "کراس"
-
-    return None, None
-
-
-def build_signal_message(sig, now, signal_type, trends):
-    reasons_text = "\n".join(sig["reasons"])
-    trends_text = ""
-    for tf_name, (trend, diff) in trends.items():
-        trends_text += "⏱ " + tf_name + ": <b>" + trend + "</b> (" + str(round(diff, 2)) + "%)\n"
-    return (
-        "🟦 <b>سیگنال " + signal_type + " - " + sig["type"] + "</b>\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "📌 <b>ارز:</b> " + sig["symbol"] + "\n"
-        "💰 <b>قیمت ورود:</b> " + str(sig["price"]) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>📊 دلایل سیگنال:</b>\n" + reasons_text + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>📈 روند تایم‌فریم‌ها:</b>\n" + trends_text +
-        "━━━━━━━━━━━━━━━━━━\n"
-        "📊 <b>RSI:</b> " + str(sig["rsi"]) + "\n"
-        "📈 <b>ADX:</b> " + str(sig["adx"]) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🛑 <b>حد ضرر:</b> " + str(sig["sl"]) + "\n"
-        "🎯 <b>هدف اول:</b> " + str(sig["tp1"]) + " | <b>R/R:</b> 1:" + str(sig["rr1"]) + "\n"
-        "🎯 <b>هدف دوم:</b> " + str(sig["tp2"]) + " | <b>R/R:</b> 1:" + str(sig["rr2"]) + "\n"
-        "🎯 <b>هدف سوم:</b> " + str(sig["tp3"]) + " | <b>R/R:</b> 1:" + str(sig["rr3"]) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "⏰ <b>زمان:</b> " + now + "\n"
-        "⏱ <b>تایم‌فریم سیگنال:</b> " + INTERVAL
-    )
-
-
-def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, trends):
-    show_long = rsi < 70
-    show_short = rsi > 30
-    if not show_long and not show_short:
-        return None
-    dec = get_decimals(price)
-    trends_text = ""
-    for tf_name, (trend, diff) in trends.items():
-        trends_text += "⏱ " + tf_name + ": <b>" + trend + "</b> (" + str(round(diff, 2)) + "%)\n"
-    msg = (
-        "🟨 <b>سناریوی معاملاتی - " + symbol + "</b>\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n"
-        "📊 <b>RSI:</b> " + str(round(rsi, 2)) + " | <b>ADX:</b> " + str(round(adx, 2)) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>📈 روند تایم‌فریم‌ها:</b>\n" + trends_text +
-        "━━━━━━━━━━━━━━━━━━\n"
-    )
-    if show_long:
-        long_entry = round(support, dec)
-        long_sl = round(support - (atr * 1.5), dec)
-        long_tp1 = round(support + (atr * 1.5), dec)
-        long_tp2 = round(support + (atr * 3), dec)
-        rr1 = calc_rr(long_entry, long_sl, long_tp1)
-        rr2 = calc_rr(long_entry, long_sl, long_tp2)
-        msg += (
-            "🟢 <b>سناریو لانگ:</b>\n"
-            "اگه قیمت به <b>" + str(long_entry) + "</b> رسید (حمایت)\n"
-            "→ ورود لانگ\n"
-            "→ 🛑 حد ضرر: <b>" + str(long_sl) + "</b>\n"
-            "→ 🎯 هدف اول: <b>" + str(long_tp1) + "</b> | R/R: 1:" + str(rr1) + "\n"
-            "→ 🎯 هدف دوم: <b>" + str(long_tp2) + "</b> | R/R: 1:" + str(rr2) + "\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-        )
-    if show_short:
-        short_entry = round(resistance, dec)
-        short_sl = round(resistance + (atr * 1.5), dec)
-        short_tp1 = round(resistance - (atr * 1.5), dec)
-        short_tp2 = round(resistance - (atr * 3), dec)
-        rr1 = calc_rr(short_entry, short_sl, short_tp1)
-        rr2 = calc_rr(short_entry, short_sl, short_tp2)
-        msg += (
-            "🔴 <b>سناریو شورت:</b>\n"
-            "اگه قیمت به <b>" + str(short_entry) + "</b> رسید (مقاومت)\n"
-            "→ ورود شورت\n"
-            "→ 🛑 حد ضرر: <b>" + str(short_sl) + "</b>\n"
-            "→ 🎯 هدف اول: <b>" + str(short_tp1) + "</b> | R/R: 1:" + str(rr1) + "\n"
-            "→ 🎯 هدف دوم: <b>" + str(short_tp2) + "</b> | R/R: 1:" + str(rr2) + "\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-        )
-    msg += ("⚠️ <b>توجه:</b> این سناریو شرطیه، نه پیش‌بینی.\n"
-            "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M"))
-    return msg
-
-
-def add_active_signal(symbol, sig, signal_type, message_id):
+def add_active_signal(symbol, sig, signal_type, trends, message_id):
     data = load_history(ACTIVE_SIGNALS_FILE)
     data[symbol] = {
-        "type": sig["type"], "price": sig["price"], "sl": sig["sl"],
-        "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
-        "signal_type": signal_type, "message_id": message_id,
+        "type": sig["type"],
+        "price": sig["price"],
+        "sl": sig["sl"],
+        "tp1": sig["tp1"],
+        "tp2": sig["tp2"],
+        "tp3": sig["tp3"],
+        "signal_type": signal_type,
+        "message_id": message_id,
         "created": datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M:%S"),
-        "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
-        "validity_count": 0, "last_validity_check": None,
+        "tp1_hit": False,
+        "tp2_hit": False,
+        "tp3_hit": False,
+        "validity_count": 0,
+        "last_validity_check": None,
     }
     save_history(data, ACTIVE_SIGNALS_FILE)
 
@@ -400,13 +240,16 @@ async def check_active_signals(bot, now):
     data = load_history(ACTIVE_SIGNALS_FILE)
     if not data:
         return
+
     updated = False
     now_dt = datetime.now(IRAN_TZ).replace(tzinfo=None)
+
     for symbol in list(data.keys()):
         info = data[symbol]
-        price = get_current_price(symbol)
+        price = get_price(symbol)
         if price is None:
             continue
+
         direction = info["type"]
         sl = info["sl"]
         tp1 = info["tp1"]
@@ -416,6 +259,7 @@ async def check_active_signals(bot, now):
         dec = get_decimals(info["price"])
         entry = info["price"]
 
+        # ====== بررسی حد ضرر ======
         sl_hit = False
         if "لانگ" in direction and price <= sl:
             sl_hit = True
@@ -423,19 +267,26 @@ async def check_active_signals(bot, now):
             sl_hit = True
 
         if sl_hit:
-            msg = ("❌ <b>سیگنال باطل شد</b>\n━━━━━━━━━━━━━━━━━━\n"
-                   "🔴 <b>حد ضرر لمس شد:</b> " + str(sl) + "\n"
-                   "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n⏰ " + now)
+            msg = (
+                "❌ <b>سیگنال باطل شد</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                "🔴 <b>حد ضرر لمس شد:</b> " + str(sl) + "\n"
+                "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n"
+                "⏰ " + now
+            )
             try:
                 if msg_id:
                     await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
                 else:
                     await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-            except: pass
+                print("سیگنال باطل شد: " + symbol)
+            except Exception as e:
+                print("خطا در ارسال: " + str(e))
             del data[symbol]
             updated = True
             continue
 
+        # ====== بررسی اهداف ======
         tp_hit = False
         if "لانگ" in direction:
             if price >= tp3 and not info.get("tp3_hit"):
@@ -474,6 +325,7 @@ async def check_active_signals(bot, now):
                     else:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
+
         elif "شورت" in direction:
             if price <= tp3 and not info.get("tp3_hit"):
                 info["tp3_hit"] = True
@@ -512,14 +364,17 @@ async def check_active_signals(bot, now):
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
 
+        # ====== بررسی اعتبار سیگنال ======
         if not tp_hit:
             try:
                 created = datetime.strptime(info["created"], "%Y-%m-%d %H:%M:%S")
                 minutes_passed = (now_dt - created).total_seconds() / 60
             except:
                 minutes_passed = 0
+
             last_validity = info.get("last_validity_check")
             validity_count = info.get("validity_count", 0)
+
             should_send = False
             if validity_count < MAX_VALIDITY_CHECKS:
                 if last_validity is None and minutes_passed >= VALIDITY_CHECK_MINUTES:
@@ -527,15 +382,19 @@ async def check_active_signals(bot, now):
                 elif last_validity is not None:
                     try:
                         last_dt = datetime.strptime(last_validity, "%Y-%m-%d %H:%M:%S")
-                        if (now_dt - last_dt).total_seconds() / 60 >= VALIDITY_CHECK_MINUTES:
+                        mins_since_last = (now_dt - last_dt).total_seconds() / 60
+                        if mins_since_last >= VALIDITY_CHECK_MINUTES:
                             should_send = True
-                    except: pass
+                    except:
+                        pass
+
             if should_send:
                 diff_pct = ((price - entry) / entry) * 100
                 if "لانگ" in direction:
                     status_emoji = "🟢" if diff_pct >= 0 else "🔴"
                 else:
                     status_emoji = "🟢" if diff_pct <= 0 else "🔴"
+
                 msg = (
                     "🔄 <b>سیگنال هنوز معتبر است</b>\n"
                     "━━━━━━━━━━━━━━━━━━\n"
@@ -544,14 +403,18 @@ async def check_active_signals(bot, now):
                     + status_emoji + " <b>تغییر:</b> " + str(round(diff_pct, 2)) + "%\n"
                     "🛑 <b>حد ضرر:</b> " + str(sl) + "\n"
                     "🎯 <b>هدف اول:</b> " + str(tp1) + "\n"
-                    "✅ <b>وضعیت:</b> هنوز می‌توان وارد شد\n⏰ " + now
+                    "✅ <b>وضعیت:</b> هنوز می‌توان وارد شد\n"
+                    "⏰ " + now
                 )
                 try:
                     if msg_id:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
                     else:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                except: pass
+                    print("سیگنال هنوز معتبر: " + symbol)
+                except Exception as e:
+                    print("خطا در ارسال: " + str(e))
+
                 info["last_validity_check"] = now_dt.strftime("%Y-%m-%d %H:%M:%S")
                 info["validity_count"] = validity_count + 1
                 updated = True
@@ -560,59 +423,117 @@ async def check_active_signals(bot, now):
         save_history(data, ACTIVE_SIGNALS_FILE)
 
 
-async def main():
-    bot = Bot(token=BOT_TOKEN)
-    signal_history = load_history(HISTORY_FILE)
-    scenario_history = load_history(SCENARIO_HISTORY_FILE)
-    now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
+def build_signal_message(sig, now, signal_type, trends):
+    reasons_text = "\n".join(sig["reasons"])
 
-    signals_found = 0
-    scenarios_found = 0
-    duplicates_skipped = 0
-    processed = 0
+    trends_text = ""
+    for tf_name, (trend, diff) in trends.items():
+        trends_text += "⏱ " + tf_name + ": <b>" + trend + "</b> (" + str(round(diff, 2)) + "%)\n"
 
-    await check_active_signals(bot, now)
+    msg = (
+        "🟦 <b>سیگنال " + signal_type + " - " + sig["type"] + "</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📌 <b>ارز:</b> " + sig["symbol"] + "\n"
+        "💰 <b>قیمت ورود:</b> " + str(sig["price"]) + "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "<b>📊 دلایل سیگنال:</b>\n" + reasons_text + "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "<b>📈 روند تایم‌فریم‌ها:</b>\n" + trends_text +
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📊 <b>RSI:</b> " + str(sig["rsi"]) + "\n"
+        "📈 <b>ADX:</b> " + str(sig["adx"]) + "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🛑 <b>حد ضرر:</b> " + str(sig["sl"]) + "\n"
+        "🎯 <b>هدف اول:</b> " + str(sig["tp1"]) + " | <b>R/R:</b> 1:" + str(sig["rr1"]) + "\n"
+        "🎯 <b>هدف دوم:</b> " + str(sig["tp2"]) + " | <b>R/R:</b> 1:" + str(sig["rr2"]) + "\n"
+        "🎯 <b>هدف سوم:</b> " + str(sig["tp3"]) + " | <b>R/R:</b> 1:" + str(sig["rr3"]) + "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "⏰ <b>زمان:</b> " + now + "\n"
+        "⏱ <b>تایم‌فریم سیگنال:</b> " + INTERVAL
+    )
+    return msg
 
-    for symbol in SYMBOLS:
-        try:
-            df = get_klines(symbol, INTERVAL)
-            time.sleep(0.15)
-            df_htf = get_klines(symbol, "4hour")
-            time.sleep(0.15)
 
-            if df is None or df_htf is None:
-                continue
+def make_signal(symbol, price, last, reasons, direction):
+    dec = get_decimals(price)
+    atr = last["atr"]
+    if direction == "لانگ 🟢":
+        sl = round(price - (atr * 1.5), dec)
+        tp1 = round(price + (atr * 1.5), dec)
+        tp2 = round(price + (atr * 3), dec)
+        tp3 = round(price + (atr * 5), dec)
+    else:
+        sl = round(price + (atr * 1.5), dec)
+        tp1 = round(price - (atr * 1.5), dec)
+        tp2 = round(price - (atr * 3), dec)
+        tp3 = round(price - (atr * 5), dec)
 
-            df = calc_indicators(df)
-            df_htf = calc_indicators(df_htf)
-            processed += 1
+    rr1 = calc_rr(price, sl, tp1)
+    rr2 = calc_rr(price, sl, tp2)
+    rr3 = calc_rr(price, sl, tp3)
 
-            last = df.iloc[-2]
-            price = last["close"]
+    return {
+        "type": direction, "symbol": symbol, "price": round(price, dec),
+        "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
+        "reasons": reasons,
+        "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
+        "rr1": rr1, "rr2": rr2, "rr3": rr3,
+    }
 
-            sig, signal_type = check_signal(df, df_htf, symbol)
 
-            if sig:
-                if not is_duplicate(signal_history, symbol, sig["type"], signal_type, COOLDOWN_MINUTES):
-                    trends = get_trends_for_symbol(symbol)
-                    signal_history = update_history(signal_history, symbol, sig["type"], signal_type)
-                    signals_found += 1
-                    msg = build_signal_message(sig, now, signal_type, trends)
-                    try:
-                        sent = await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                        add_active_signal(symbol, sig, signal_type, sent.message_id)
-                        print("سیگنال: " + symbol + " | " + signal_type)
-                    except Exception as e:
-                        print("خطا در ارسال: " + str(e))
-                else:
-                    duplicates_skipped += 1
+def check_signal(df, df_htf, symbol):
+    if df is None or df_htf is None:
+        return None, None
+    if len(df) < 5 or len(df_htf) < 50:
+        return None, None
 
-            if symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]:
-                support, resistance = find_support_resistance(df)
-                if support and resistance and last["atr"] > 0:
-                    dist_support = abs((price - support) / price) * 100
-                    dist_resistance = abs((resistance - price) / price) * 100
+    last = df.iloc[-2]
+    prev = df.iloc[-3]
+    price = last["close"]
+    rsi = last["rsi"]
 
-                    if dist_support > 0.5 and dist_resistance > 0.5:
-                        if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
-                            trends = get_trends_for_symbol(s
+    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
+    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
+    adx_required = last["adx"] > ADX_THRESHOLD
+
+    if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
+        macd_required = last["macd"] > last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_up):
+            return None, None
+        reasons = []
+        reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته صعودی")
+        sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
+        return sig, "برگشت"
+
+    if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
+        macd_required = last["macd"] < last["macd_signal"]
+        if not (volume_required and macd_required and adx_required and htf_down):
+            return None, None
+        reasons = []
+        reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD نزولی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+        reasons.append("✅ روند ۴ساعته نزولی")
+        sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
+        return sig, "برگشت"
+
+    cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
+    cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
+
+    if cross_up:
+        macd_required = last["macd"] > last["macd_signal"]
+        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
+        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
+            return None, None
+        reasons = []
+        reasons.append("✅ کراس صعودی EMA9/21")
+        reasons.append("✅ حجم بالا")
+        reasons.append("✅ MACD صعودی")
+        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
+      
