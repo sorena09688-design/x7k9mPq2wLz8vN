@@ -649,12 +649,12 @@ async def main():
             "⏰ این گزارش خودکار است."
         )
         try:
-            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
-        except Exception as e:
-            print("خطا در ارسال گزارش: " + str(e))
-            signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
-            save_history(signal_history, HISTORY_FILE)
+    await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+    print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+    signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
+    save_history(signal_history, HISTORY_FILE)
+except Exception as e:
+    print("خطا در ارسال گزارش: " + str(e))
 
 if __name__ == "__main__":
     asyncio.run(main())
