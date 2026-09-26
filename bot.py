@@ -850,8 +850,6 @@ async def check_alerts(bot):
             del alerts[chat_id][symbol]
     if triggered:
         save_alerts(alerts)
-        async def main():
-            bot = Bot(token=BOT_TOKEN)
 
     signal_history = load_history(HISTORY_FILE)
     scenario_history = load_history(SCENARIO_HISTORY_FILE)
