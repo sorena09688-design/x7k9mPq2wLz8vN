@@ -959,3 +959,102 @@ async def check_alerts(bot):
 
 if __name__ == "__main__":
     asyncio.run(main())
+async def main():
+    bot = Bot(token=BOT_TOKEN)
+    signal_history = load_history(HISTORY_FILE)
+    scenario_history = load_history(SCENARIO_HISTORY_FILE)
+    now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
+
+    signals_found = 0
+    scenarios_found = 0
+    duplicates_skipped = 0
+    processed = 0
+
+    await process_telegram_commands(bot)
+    await check_alerts(bot)
+    await check_active_signals(bot, now)
+
+    for symbol in SYMBOLS:
+        try:
+            df = get_klines(symbol, INTERVAL)
+            time.sleep(0.15)
+            df_htf = get_klines(symbol, "4hour")
+            time.sleep(0.15)
+
+            if df is None or df_htf is None:
+                continue
+
+            df = calc_indicators(df)
+            df_htf = calc_indicators(df_htf)
+            processed += 1
+
+            last = df.iloc[-2]
+            price = last["close"]
+
+            sig, signal_type = check_signal(df, df_htf, symbol)
+
+            if sig:
+                if not is_duplicate(signal_history, symbol, sig["type"], signal_type, COOLDOWN_MINUTES):
+                    trends = get_trends_for_symbol(symbol)
+                    signal_history = update_history(signal_history, symbol, sig["type"], signal_type)
+                    signals_found += 1
+                    msg = build_signal_message(sig, now, signal_type, trends)
+                    try:
+                        sent = await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                        add_active_signal(symbol, sig, signal_type, trends, sent.message_id)
+                        print("سیگنال: " + symbol + " | " + signal_type)
+                    except Exception as e:
+                        print("خطا در ارسال: " + str(e))
+                else:
+                    duplicates_skipped += 1
+
+            if symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]:
+                support, resistance = find_support_resistance(df)
+                if support and resistance and last["atr"] > 0:
+                    dist_support = abs((price - support) / price) * 100
+                    dist_resistance = abs((resistance - price) / price) * 100
+
+                    if dist_support > 0.5 and dist_resistance > 0.5:
+                        if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
+                            trends = get_trends_for_symbol(symbol)
+                            msg = build_scenario_message(
+                                symbol, price, support, resistance,
+                                last["atr"], last["rsi"], last["adx"], trends
+                            )
+                            if msg:
+                                scenario_history = update_history(scenario_history, symbol, "scenario", "both")
+                                scenarios_found += 1
+                                try:
+                                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                                    print("سناریو: " + symbol)
+                                except Exception as e:
+                                    print("خطا در ارسال سناریو: " + str(e))
+
+        except Exception as e:
+            print("خطا در " + symbol + ": " + str(e))
+            continue
+
+    save_history(signal_history, HISTORY_FILE)
+    save_history(scenario_history, SCENARIO_HISTORY_FILE)
+
+    print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
+
+    if signals_found == 0 and scenarios_found == 0:
+        no_signal_msg = (
+            "📭 <b>گزارش - " + now + "</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "✅ پردازش: " + str(processed) + " ارز\n"
+            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
+            "⏱ تایم‌فریم: " + INTERVAL + "\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⏰ این گزارش خودکار است."
+        )
+        try:
+            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+        except Exception as e:
+            print("خطا در ارسال گزارش: " + str(e))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
