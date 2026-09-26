@@ -464,7 +464,6 @@ async def check_active_signals(bot, now):
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
             elif price >= tp1 and not info.get("tp1_hit"):
-            continue
                 info["tp1_hit"] = True
                 updated = True
                 tp_hit = True
