@@ -15,22 +15,6 @@
     "validity_count": 3,
     "last_validity_check": "2026-09-26 20:00:31"
   },
-  "UNIUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 9.6923,
-    "sl": 9.6097,
-    "tp1": 9.7749,
-    "tp2": 9.8575,
-    "tp3": 9.9677,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1663,
-    "created": "2026-09-26 18:31:02",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-09-26 20:04:27"
-  },
   "SEIUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
     "price": 0.07412,
@@ -78,22 +62,6 @@
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-09-26 20:30:47"
-  },
-  "PEPEUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 4.46e-06,
-    "sl": 4.43e-06,
-    "tp1": 4.49e-06,
-    "tp2": 4.52e-06,
-    "tp3": 4.56e-06,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1685,
-    "created": "2026-09-26 19:00:48",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 2,
-    "last_validity_check": "2026-09-26 20:04:27"
   },
   "BTCUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
