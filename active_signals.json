@@ -44,8 +44,8 @@
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 0,
-    "last_validity_check": null
+    "validity_count": 1,
+    "last_validity_check": "2026-09-26 19:02:26"
   },
   "SEIUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
@@ -60,8 +60,8 @@
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 0,
-    "last_validity_check": null
+    "validity_count": 1,
+    "last_validity_check": "2026-09-26 19:02:26"
   },
   "ETHUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
@@ -73,7 +73,7 @@
     "signal_type": "\u06a9\u0631\u0627\u0633",
     "message_id": 1665,
     "created": "2026-09-26 18:31:38",
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "validity_count": 0,
@@ -105,6 +105,22 @@
     "signal_type": "\u06a9\u0631\u0627\u0633",
     "message_id": 1685,
     "created": "2026-09-26 19:00:48",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
+  },
+  "LUNCUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 5.596e-05,
+    "sl": 5.568e-05,
+    "tp1": 5.624e-05,
+    "tp2": 5.652e-05,
+    "tp3": 5.689e-05,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1689,
+    "created": "2026-09-26 19:02:59",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
