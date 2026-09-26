@@ -51,9 +51,10 @@ SYMBOLS = [
 ]
 SYMBOLS = list(dict.fromkeys(SYMBOLS))
 
-INTERVAL = "15min"
+# ====== تنظیمات تایم‌فریم ======
+INTERVAL = "30min"
 TREND_TFS = [
-    ("30min", "۳۰ دقیقه"),
+    ("1hour", "۱ ساعته"),
     ("2hour", "۲ ساعته"),
     ("4hour", "۴ ساعته")
 ]
@@ -72,8 +73,6 @@ RSI_SHORT_MAX = 70
 RSI_REVERSAL_LONG = 35
 RSI_REVERSAL_SHORT = 65
 
-
-# ==================== توابع عمومی ====================
 
 def load_history(file_path):
     try:
@@ -152,16 +151,13 @@ def calc_indicators(df):
     loss = (-delta.where(delta < 0, 0)).rolling(RSI_PERIOD).mean()
     rs = gain / loss
     df["rsi"] = 100 - (100 / (1 + rs))
-
     df["ema_fast"] = df["close"].ewm(span=EMA_FAST, adjust=False).mean()
     df["ema_slow"] = df["close"].ewm(span=EMA_SLOW, adjust=False).mean()
     df["ema_trend"] = df["close"].ewm(span=EMA_TREND, adjust=False).mean()
-
     df["tr"] = np.maximum(df["high"] - df["low"],
                 np.maximum(abs(df["high"] - df["close"].shift()),
                            abs(df["low"] - df["close"].shift())))
     df["atr"] = df["tr"].rolling(14).mean()
-
     df["up"] = df["high"].diff()
     df["down"] = -df["low"].diff()
     df["plus_dm"] = np.where((df["up"] > df["down"]) & (df["up"] > 0), df["up"], 0)
@@ -170,12 +166,9 @@ def calc_indicators(df):
     df["minus_di"] = 100 * (df["minus_dm"].rolling(14).mean() / df["atr"])
     df["dx"] = 100 * abs(df["plus_di"] - df["minus_di"]) / (df["plus_di"] + df["minus_di"])
     df["adx"] = df["dx"].rolling(14).mean()
-
     df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
     df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
-
     df["vol_ma"] = df["volume"].rolling(20).mean()
-
     return df
 
 
@@ -188,8 +181,7 @@ def get_trend(df):
     diff_pct = ((last_close - last_ema) / last_ema) * 100
     if last_close > last_ema:
         return "صعودی 📈", diff_pct
-    else:
-        return "نزولی 📉", diff_pct
+    return "نزولی 📉", diff_pct
 
 
 def get_trends_for_symbol(symbol):
@@ -209,8 +201,7 @@ def get_decimals(price):
         return 4
     elif price >= 0.01:
         return 5
-    else:
-        return 8
+    return 8
 
 
 def calc_rr(entry, sl, tp):
@@ -234,8 +225,6 @@ def find_support_resistance(df, lookback=50):
     return support, resistance
 
 
-# ==================== سیگنال‌ها ====================
-
 def make_signal(symbol, price, last, reasons, direction):
     dec = get_decimals(price)
     atr = last["atr"]
@@ -249,17 +238,11 @@ def make_signal(symbol, price, last, reasons, direction):
         tp1 = round(price - (atr * 1.5), dec)
         tp2 = round(price - (atr * 3), dec)
         tp3 = round(price - (atr * 5), dec)
-
-    rr1 = calc_rr(price, sl, tp1)
-    rr2 = calc_rr(price, sl, tp2)
-    rr3 = calc_rr(price, sl, tp3)
-
     return {
         "type": direction, "symbol": symbol, "price": round(price, dec),
         "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
-        "reasons": reasons,
-        "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
-        "rr1": rr1, "rr2": rr2, "rr3": rr3,
+        "reasons": reasons, "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
+        "rr1": calc_rr(price, sl, tp1), "rr2": calc_rr(price, sl, tp2), "rr3": calc_rr(price, sl, tp3),
     }
 
 
@@ -268,12 +251,10 @@ def check_signal(df, df_htf, symbol):
         return None, None
     if len(df) < 5 or len(df_htf) < 50:
         return None, None
-
     last = df.iloc[-2]
     prev = df.iloc[-3]
     price = last["close"]
     rsi = last["rsi"]
-
     htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
     htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
     volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
@@ -283,27 +264,19 @@ def check_signal(df, df_htf, symbol):
         macd_required = last["macd"] > last["macd_signal"]
         if not (volume_required and macd_required and adx_required and htf_up):
             return None, None
-        reasons = []
-        reasons.append("🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD صعودی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته صعودی")
-        sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
-        return sig, "برگشت"
+        reasons = ["🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")",
+                   "✅ حجم بالا", "✅ MACD صعودی",
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی"]
+        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "برگشت"
 
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
         macd_required = last["macd"] < last["macd_signal"]
         if not (volume_required and macd_required and adx_required and htf_down):
             return None, None
-        reasons = []
-        reasons.append("🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD نزولی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته نزولی")
-        sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
-        return sig, "برگشت"
+        reasons = ["🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")",
+                   "✅ حجم بالا", "✅ MACD نزولی",
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی"]
+        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "برگشت"
 
     cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
@@ -313,30 +286,20 @@ def check_signal(df, df_htf, symbol):
         rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
         if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
             return None, None
-        reasons = []
-        reasons.append("✅ کراس صعودی EMA9/21")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD صعودی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته صعودی")
-        reasons.append("✅ RSI = " + str(round(rsi, 2)))
-        sig = make_signal(symbol, price, last, reasons, "لانگ 🟢")
-        return sig, "کراس"
+        reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
+                   "✅ RSI = " + str(round(rsi, 2))]
+        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
 
     if cross_down:
         macd_required = last["macd"] < last["macd_signal"]
         rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
         if not (volume_required and macd_required and adx_required and htf_down and rsi_ok):
             return None, None
-        reasons = []
-        reasons.append("✅ کراس نزولی EMA9/21")
-        reasons.append("✅ حجم بالا")
-        reasons.append("✅ MACD نزولی")
-        reasons.append("✅ ADX = " + str(round(last["adx"], 2)))
-        reasons.append("✅ روند ۴ساعته نزولی")
-        reasons.append("✅ RSI = " + str(round(rsi, 2)))
-        sig = make_signal(symbol, price, last, reasons, "شورت 🔴")
-        return sig, "کراس"
+        reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
+                   "✅ RSI = " + str(round(rsi, 2))]
+        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "کراس"
 
     return None, None
 
@@ -346,8 +309,7 @@ def build_signal_message(sig, now, signal_type, trends):
     trends_text = ""
     for tf_name, (trend, diff) in trends.items():
         trends_text += "⏱ " + tf_name + ": <b>" + trend + "</b> (" + str(round(diff, 2)) + "%)\n"
-
-    msg = (
+    return (
         "🟦 <b>سیگنال " + signal_type + " - " + sig["type"] + "</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "📌 <b>ارز:</b> " + sig["symbol"] + "\n"
@@ -368,10 +330,7 @@ def build_signal_message(sig, now, signal_type, trends):
         "⏰ <b>زمان:</b> " + now + "\n"
         "⏱ <b>تایم‌فریم سیگنال:</b> " + INTERVAL
     )
-    return msg
 
-
-# ==================== سناریوها ====================
 
 def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, trends):
     show_long = rsi < 70
@@ -379,11 +338,9 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
     if not show_long and not show_short:
         return None
     dec = get_decimals(price)
-
     trends_text = ""
     for tf_name, (trend, diff) in trends.items():
         trends_text += "⏱ " + tf_name + ": <b>" + trend + "</b> (" + str(round(diff, 2)) + "%)\n"
-
     msg = (
         "🟨 <b>سناریوی معاملاتی - " + symbol + "</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
@@ -393,7 +350,6 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
         "<b>📈 روند تایم‌فریم‌ها:</b>\n" + trends_text +
         "━━━━━━━━━━━━━━━━━━\n"
     )
-
     if show_long:
         long_entry = round(support, dec)
         long_sl = round(support - (atr * 1.5), dec)
@@ -410,7 +366,6 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
             "→ 🎯 هدف دوم: <b>" + str(long_tp2) + "</b> | R/R: 1:" + str(rr2) + "\n"
             "━━━━━━━━━━━━━━━━━━\n"
         )
-
     if show_short:
         short_entry = round(resistance, dec)
         short_sl = round(resistance + (atr * 1.5), dec)
@@ -427,15 +382,10 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
             "→ 🎯 هدف دوم: <b>" + str(short_tp2) + "</b> | R/R: 1:" + str(rr2) + "\n"
             "━━━━━━━━━━━━━━━━━━\n"
         )
-
-    msg += (
-        "⚠️ <b>توجه:</b> این سناریو شرطیه، نه پیش‌بینی.\n"
-        "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
-    )
+    msg += ("⚠️ <b>توجه:</b> این سناریو شرطیه، نه پیش‌بینی.\n"
+            "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M"))
     return msg
 
-
-# ==================== سیگنال‌های فعال ====================
 
 def add_active_signal(symbol, sig, signal_type, trends, message_id):
     data = load_history(ACTIVE_SIGNALS_FILE)
@@ -456,13 +406,11 @@ async def check_active_signals(bot, now):
         return
     updated = False
     now_dt = datetime.now(IRAN_TZ).replace(tzinfo=None)
-
     for symbol in list(data.keys()):
         info = data[symbol]
         price = get_current_price(symbol)
         if price is None:
             continue
-
         direction = info["type"]
         sl = info["sl"]
         tp1 = info["tp1"]
@@ -635,8 +583,7 @@ def save_last_update_id(update_id):
 
 
 def build_analysis(symbol):
-    """تحلیل توصیفی"""
-    df = get_klines(symbol, "15min")
+    df = get_klines(symbol, INTERVAL)
     if df is None or len(df) < 30:
         return None
     df = calc_indicators(df)
@@ -656,4 +603,19 @@ def build_analysis(symbol):
         tf_df["ema_trend"] = tf_df["close"].ewm(span=EMA_TREND, adjust=False).mean()
         last_close = tf_df["close"].iloc[-2]
         last_ema = tf_df["ema_trend"].iloc[-2]
-        diff_pct = ((last_close -
+        diff_pct = ((last_close - last_ema) / last_ema) * 100
+        if last_close > last_ema:
+            trends[tf_name] = ("صعودی 📈", diff_pct)
+        else:
+            trends[tf_name] = ("نزولی 📉", diff_pct)
+
+    support, resistance = find_support_resistance(df)
+    support = round(support, dec)
+    resistance = round(resistance, dec)
+    dist_support = ((price - support) / price) * 100
+    dist_resistance = ((resistance - price) / price) * 100
+
+    if rsi >= 70:
+        rsi_text = "🔴 RSI در ناحیه اشباع خرید (" + str(round(rsi, 2)) + "). احتمال اصلاح یا استراحت بالاست."
+    elif rsi >= 60:
+        rsi_text = "🟠 RSI نزدیک اشباع خرید (" + str(round(rsi, 2)) + "). مومنتوم قویه ولی
