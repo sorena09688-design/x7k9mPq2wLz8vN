@@ -222,9 +222,8 @@ def find_support_resistance(df, lookback=50):
     support = max(support_candidates) if support_candidates else current_price * 0.97
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
     return support, resistance
-    
-def make_signal(symbol, price, last, reasons, direction):
-    dec = get_decimals(price)
+    def make_signal(symbol, price, last, reasons, direction):
+            dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
         sl = round(price - (atr * 1.5), dec)
@@ -384,7 +383,8 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
             "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M"))
     return msg
     def add_active_signal(symbol, sig, signal_type, trends, message_id):
-    data = load_history(ACTIVE_SIGNALS_FILE)
+        data = load_history(ACTIVE_SIGNALS_FILE)
+
     data[symbol] = {
         "type": sig["type"], "price": sig["price"], "sl": sig["sl"],
         "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
@@ -851,7 +851,8 @@ async def check_alerts(bot):
     if triggered:
         save_alerts(alerts)
         async def main():
-    bot = Bot(token=BOT_TOKEN)
+            bot = Bot(token=BOT_TOKEN)
+
     signal_history = load_history(HISTORY_FILE)
     scenario_history = load_history(SCENARIO_HISTORY_FILE)
     now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
