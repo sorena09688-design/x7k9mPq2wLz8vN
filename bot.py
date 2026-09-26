@@ -617,5 +617,18 @@ async def main():
                 if support and resistance and last["atr"] > 0:
                     dist_support = abs((price - support) / price) * 100
                     dist_resistance = abs((resistance - price) / price) * 100
-
                     if dist_support > 0.5 and dist_resistance > 0.5:
+    if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
+        trends = get_trends_for_symbol(symbol)
+        msg = build_scenario_message(
+            symbol, price, support, resistance,
+            last["atr"], last["rsi"], last["adx"], trends
+        )
+        if msg:
+            scenario_history = update_history(scenario_history, symbol, "scenario", "both")
+            scenarios_found += 1
+            try:
+                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                print("سناریو: " + symbol)
+            except Exception as e:
+                print("خطا در ارسال سناریو: " + str(e))
