@@ -21,7 +21,7 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: python bot.py
+        run: python test_telegram.py
       - name: Commit history
         run: |
           git config user.name "github-actions"
