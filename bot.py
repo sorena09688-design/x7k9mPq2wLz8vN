@@ -638,7 +638,7 @@ async def main():
 
     print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
 
-    if signals_found == 0 and scenarios_found == 0:
+    if signals_found == 0 and scenarios_found == 0 and not is_duplicate(signal_history, "GLOBAL", "none", "no_signal", NO_SIGNAL_COOLDOWN_MINUTES):
         no_signal_msg = (
             "📭 <b>گزارش - " + now + "</b>\n"
             "━━━━━━━━━━━━━━━━━━\n"
@@ -653,7 +653,8 @@ async def main():
             print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
         except Exception as e:
             print("خطا در ارسال گزارش: " + str(e))
-
+            signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
+            save_history(signal_history, HISTORY_FILE)
 
 if __name__ == "__main__":
     asyncio.run(main())
