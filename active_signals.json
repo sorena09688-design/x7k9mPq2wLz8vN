@@ -1,20 +1,4 @@
 {
-  "HEIUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 0.1427,
-    "sl": 0.14182,
-    "tp1": 0.14358,
-    "tp2": 0.14446,
-    "tp3": 0.14563,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1633,
-    "created": "2026-09-26 17:41:12",
-    "tp1_hit": true,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-09-26 19:16:25"
-  },
   "ADAUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
     "price": 0.2565,
@@ -121,6 +105,22 @@
     "signal_type": "\u06a9\u0631\u0627\u0633",
     "message_id": 1689,
     "created": "2026-09-26 19:02:59",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
+  },
+  "BTCUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 84144.7,
+    "sl": 84051.38,
+    "tp1": 84238.02,
+    "tp2": 84331.34,
+    "tp3": 84455.77,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1711,
+    "created": "2026-09-26 19:31:00",
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
