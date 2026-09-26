@@ -21,7 +21,7 @@ if not CHAT_ID:
 HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
 ACTIVE_SIGNALS_FILE = "active_signals.json"
-COOLDOWN_MINUTES = 30
+COOLDOWN_MINUTES = 60
 SCENARIO_COOLDOWN_MINUTES = 60
 NO_SIGNAL_COOLDOWN_MINUTES = 180
 VALIDITY_CHECK_MINUTES = 30
@@ -60,14 +60,14 @@ EMA_FAST = 9
 EMA_SLOW = 21
 EMA_TREND = 100
 
-ADX_THRESHOLD = 18
-VOLUME_MULT = 1.0
-RSI_LONG_MIN = 30
-RSI_LONG_MAX = 70
-RSI_SHORT_MIN = 30
-RSI_SHORT_MAX = 70
-RSI_REVERSAL_LONG = 35
-RSI_REVERSAL_SHORT = 65
+ADX_THRESHOLD = 25
+VOLUME_MULT = 1.5
+RSI_LONG_MIN = 40
+RSI_LONG_MAX = 60
+RSI_SHORT_MIN = 40
+RSI_SHORT_MAX = 60
+RSI_REVERSAL_LONG = 30
+RSI_REVERSAL_SHORT = 70
 
 
 def load_history(file_path):
@@ -225,15 +225,15 @@ def make_signal(symbol, price, last, reasons, direction):
     dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
-        sl = round(price - (atr * 1.5), dec)
-        tp1 = round(price + (atr * 1.5), dec)
-        tp2 = round(price + (atr * 3), dec)
-        tp3 = round(price + (atr * 5), dec)
+        sl = round(price - (atr * 2.0), dec)
+        tp1 = round(price + (atr * 2.5), dec)
+        tp2 = round(price + (atr * 4.0), dec)
+        tp3 = round(price + (atr * 6.0), dec)
     else:
         sl = round(price + (atr * 1.5), dec)
-        tp1 = round(price - (atr * 1.5), dec)
-        tp2 = round(price - (atr * 3), dec)
-        tp3 = round(price - (atr * 5), dec)
+        tp1 = round(price - (atr * 2.0), dec)
+        tp2 = round(price - (atr * 3.0), dec)
+        tp3 = round(price - (atr * 4.5), dec)
     return {
         "type": direction, "symbol": symbol, "price": round(price, dec),
         "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
