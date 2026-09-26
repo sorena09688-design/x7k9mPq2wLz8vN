@@ -222,7 +222,8 @@ def find_support_resistance(df, lookback=50):
     support = max(support_candidates) if support_candidates else current_price * 0.97
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
     return support, resistance
-    def make_signal(symbol, price, last, reasons, direction):
+    
+def make_signal(symbol, price, last, reasons, direction):
     dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
