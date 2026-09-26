@@ -464,43 +464,7 @@ async def check_active_signals(bot, now):
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
             elif price >= tp1 and not info.get("tp1_hit"):
-                info["tp1_hit"] = True
-                updated = True
-                tp_hit = True
-                msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
-                try:
-                    if msg_id:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-                    else:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                except: pass
-        elif "شورت" in direction:
-            if price <= tp3 and not info.get("tp3_hit"):
-                info["tp3_hit"] = True
-                updated = True
-                tp_hit = True
-                msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
-                try:
-                    if msg_id:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-                    else:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                except: pass
-                del data[symbol]
-                updated = True
-                continue
-            elif price <= tp2 and not info.get("tp2_hit"):
-                info["tp2_hit"] = True
-                updated = True
-                tp_hit = True
-                msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
-                try:
-                    if msg_id:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-                    else:
-                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                except: pass
-            elif price <= tp1 and not info.get("tp1_hit"):
+            continue
                 info["tp1_hit"] = True
                 updated = True
                 tp_hit = True
@@ -649,12 +613,13 @@ async def main():
             "⏰ این گزارش خودکار است."
         )
         try:
-    await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-    print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
-    signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
-    save_history(signal_history, HISTORY_FILE)
-except Exception as e:
-    print("خطا در ارسال گزارش: " + str(e))
+            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
+            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
+            signal_history = update_history(signal_history, "GLOBAL", "none", "no_signal")
+            save_history(signal_history, HISTORY_FILE)
+        except Exception as e:
+            print("خطا در ارسال گزارش: " + str(e))
+
 
 if __name__ == "__main__":
     asyncio.run(main())
