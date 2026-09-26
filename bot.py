@@ -21,12 +21,9 @@ if not CHAT_ID:
 HISTORY_FILE = "signals_history.json"
 SCENARIO_HISTORY_FILE = "scenarios_history.json"
 ACTIVE_SIGNALS_FILE = "active_signals.json"
-ALERTS_FILE = "alerts.json"
-LAST_UPDATE_FILE = "last_update.txt"
 
 COOLDOWN_MINUTES = 30
 SCENARIO_COOLDOWN_MINUTES = 60
-NO_SIGNAL_COOLDOWN_MINUTES = 0
 VALIDITY_CHECK_MINUTES = 30
 MAX_VALIDITY_CHECKS = 3
 
@@ -222,8 +219,10 @@ def find_support_resistance(df, lookback=50):
     support = max(support_candidates) if support_candidates else current_price * 0.97
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
     return support, resistance
-    def make_signal(symbol, price, last, reasons, direction):
-            dec = get_decimals(price)
+
+
+def make_signal(symbol, price, last, reasons, direction):
+    dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
         sl = round(price - (atr * 1.5), dec)
@@ -382,9 +381,10 @@ def build_scenario_message(symbol, price, support, resistance, atr, rsi, adx, tr
     msg += ("⚠️ <b>توجه:</b> این سناریو شرطیه، نه پیش‌بینی.\n"
             "⏰ " + datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M"))
     return msg
-    def add_active_signal(symbol, sig, signal_type, trends, message_id):
-        data = load_history(ACTIVE_SIGNALS_FILE)
 
+
+def add_active_signal(symbol, sig, signal_type, message_id):
+    data = load_history(ACTIVE_SIGNALS_FILE)
     data[symbol] = {
         "type": sig["type"], "price": sig["price"], "sl": sig["sl"],
         "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
@@ -560,403 +560,6 @@ async def check_active_signals(bot, now):
         save_history(data, ACTIVE_SIGNALS_FILE)
 
 
-# ==================== دستورات تلگرام ====================
-
-def get_last_update_id():
-    try:
-        with open(LAST_UPDATE_FILE, "r") as f:
-            return int(f.read().strip())
-    except:
-        return 0
-
-
-def save_last_update_id(update_id):
-    try:
-        with open(LAST_UPDATE_FILE, "w") as f:
-            f.write(str(update_id))
-    except Exception as e:
-        print("خطا: " + str(e))
-
-
-def build_analysis(symbol):
-    df = get_klines(symbol, INTERVAL)
-    if df is None or len(df) < 30:
-        return None
-    df = calc_indicators(df)
-    last = df.iloc[-2]
-    price = last["close"]
-    rsi = last["rsi"]
-    adx = last["adx"]
-    dec = get_decimals(price)
-
-    trends = {}
-    for tf_code, tf_name in TREND_TFS:
-        tf_df = get_klines(symbol, tf_code)
-        time.sleep(0.1)
-        if tf_df is None or len(tf_df) < EMA_TREND:
-            trends[tf_name] = None
-            continue
-        tf_df["ema_trend"] = tf_df["close"].ewm(span=EMA_TREND, adjust=False).mean()
-        last_close = tf_df["close"].iloc[-2]
-        last_ema = tf_df["ema_trend"].iloc[-2]
-        diff_pct = ((last_close - last_ema) / last_ema) * 100
-        if last_close > last_ema:
-            trends[tf_name] = ("صعودی 📈", diff_pct)
-        else:
-            trends[tf_name] = ("نزولی 📉", diff_pct)
-
-    support, resistance = find_support_resistance(df)
-    support = round(support, dec)
-    resistance = round(resistance, dec)
-    dist_support = ((price - support) / price) * 100
-    dist_resistance = ((resistance - price) / price) * 100
-
-    if rsi >= 70:
-        rsi_text = "🔴 RSI در ناحیه اشباع خرید (" + str(round(rsi, 2)) + "). احتمال اصلاح یا استراحت بالاست."
-    elif rsi >= 60:
-        rsi_text = "🟠 RSI نزدیک اشباع خرید (" + str(round(rsi, 2)) + "). مومنتوم قویه ولی مراقب برگشت باش."
-    elif rsi >= 50:
-        rsi_text = "🟢 RSI در ناحیه صعودی (" + str(round(rsi, 2)) + "). مومنتوم سالم و متعادل."
-    elif rsi >= 40:
-        rsi_text = "🟡 RSI در ناحیه خنثی (" + str(round(rsi, 2)) + "). بازار بی‌تصمیمه."
-    elif rsi >= 30:
-        rsi_text = "🟠 RSI نزدیک اشباع فروش (" + str(round(rsi, 2)) + "). احتمال برگشت صعودی وجود داره."
-    else:
-        rsi_text = "🔴 RSI در ناحیه اشباع فروش (" + str(round(rsi, 2)) + "). احتمال برگشت صعودی بالاست."
-
-    if adx >= 40:
-        adx_text = "روند فعلی بسیار قویه (ADX: " + str(round(adx, 2)) + ")."
-    elif adx >= 25:
-        adx_text = "روند فعلی قویه (ADX: " + str(round(adx, 2)) + ")."
-    elif adx >= 20:
-        adx_text = "روند فعلی متوسطه (ADX: " + str(round(adx, 2)) + ")."
-    else:
-        adx_text = "روند فعلی ضعیفه و بازار در فاز رنجه (ADX: " + str(round(adx, 2)) + ")."
-
-    trend_values = [v for v in trends.values() if v is not None]
-    if trend_values:
-        up_count = sum(1 for v in trend_values if "صعودی" in v[0])
-        down_count = sum(1 for v in trend_values if "نزولی" in v[0])
-        if up_count == len(trend_values):
-            trend_text = "✅ روند کلی در همه تایم‌فریم‌ها صعودیه."
-        elif down_count == len(trend_values):
-            trend_text = "❌ روند کلی در همه تایم‌فریم‌ها نزولیه."
-        elif up_count > down_count:
-            trend_text = "⚠️ روند کلی بیشتر صعودیه، ولی بعضی تایم‌فریم‌ها نزولی هستن."
-        else:
-            trend_text = "⚠️ روند کلی بیشتر نزولیه، ولی بعضی تایم‌فریم‌ها صعودی هستن."
-    else:
-        trend_text = "❓ داده کافی برای تحلیل روند نیست."
-
-    if dist_resistance < 1:
-        position_text = "⚠️ قیمت خیلی نزدیک به مقاومت " + str(resistance) + " هست (فاصله: " + str(round(dist_resistance, 2)) + "%)."
-    elif dist_support < 1:
-        position_text = "⚠️ قیمت خیلی نزدیک به حمایت " + str(support) + " هست (فاصله: " + str(round(dist_support, 2)) + "%)."
-    else:
-        position_text = "قیمت بین حمایت " + str(support) + " و مقاومت " + str(resistance) + " قرار داره."
-
-    now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
-
-    trends_text = ""
-    for tf_name, val in trends.items():
-        if val is None:
-            trends_text += "⏱ " + tf_name + ": داده کافی نیست\n"
-        else:
-            trends_text += "⏱ " + tf_name + ": " + val[0] + " (" + str(round(val[1], 2)) + "%)\n"
-
-    msg = (
-        "📊 <b>تحلیل " + symbol + "</b>\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "📈 <b>روند تایم‌فریم‌ها:</b>\n" + trends_text +
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>🧭 تحلیل روند:</b>\n" + trend_text + "\n" + adx_text + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>📉 تحلیل RSI:</b>\n" + rsi_text + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "<b>📍 موقعیت قیمت:</b>\n" + position_text + "\n"
-        "🟢 حمایت: " + str(support) + "\n"
-        "🔴 مقاومت: " + str(resistance) + "\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "⏰ " + now + "\n"
-        "⚠️ این تحلیل خودکار و صرفاً جهت اطلاعه، نه توصیه معاملاتی."
-    )
-    return msg
-
-
-def load_alerts():
-    try:
-        with open(ALERTS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {}
-
-
-def save_alerts(alerts):
-    try:
-        with open(ALERTS_FILE, "w") as f:
-            json.dump(alerts, f, indent=2)
-    except Exception as e:
-        print("خطا در ذخیره هشدارها: " + str(e))
-
-
-async def process_telegram_commands(bot):
-    last_id = get_last_update_id()
-    url = "https://api.telegram.org/bot" + BOT_TOKEN + "/getUpdates?offset=" + str(last_id + 1) + "&timeout=1"
-    try:
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        if not data.get("ok"):
-            return
-        updates = data.get("result", [])
-        for upd in updates:
-            last_id = upd["update_id"]
-            msg = upd.get("message", {})
-            text = msg.get("text", "").strip()
-            chat_id = msg.get("chat", {}).get("id")
-            if not text or not chat_id:
-                continue
-
-            if text.startswith("/alert"):
-                parts = text.split()
-                if len(parts) < 3:
-                    await bot.send_message(chat_id=chat_id, text="❌ فرمت: /alert SYMBOL PRICE\nمثال: /alert ZEC 1672")
-                    continue
-                symbol = parts[1].upper()
-                if not symbol.endswith("USDT"):
-                    symbol = symbol + "USDT"
-                try:
-                    target = float(parts[2])
-                except:
-                    await bot.send_message(chat_id=chat_id, text="❌ قیمت باید عدد باشه.")
-                    continue
-                price = get_current_price(symbol)
-                if price is None:
-                    await bot.send_message(chat_id=chat_id, text="❌ ارز " + symbol + " پیدا نشد.")
-                    continue
-                alert_type = "above" if target > price else "below"
-                alerts = load_alerts()
-                if str(chat_id) not in alerts:
-                    alerts[str(chat_id)] = {}
-                alerts[str(chat_id)][symbol] = {"price": target, "type": alert_type}
-                save_alerts(alerts)
-                direction = "بالای" if alert_type == "above" else "زیر"
-                await bot.send_message(chat_id=chat_id, text="✅ هشدار ثبت شد:\n" + symbol + " → " + direction + " " + str(target) + "\nقیمت فعلی: " + str(price), parse_mode="HTML")
-
-            elif text.startswith("/remove"):
-                parts = text.split()
-                if len(parts) < 2:
-                    await bot.send_message(chat_id=chat_id, text="❌ فرمت: /remove SYMBOL")
-                    continue
-                symbol = parts[1].upper()
-                if not symbol.endswith("USDT"):
-                    symbol = symbol + "USDT"
-                alerts = load_alerts()
-                if str(chat_id) in alerts and symbol in alerts[str(chat_id)]:
-                    del alerts[str(chat_id)][symbol]
-                    save_alerts(alerts)
-                    await bot.send_message(chat_id=chat_id, text="✅ هشدار " + symbol + " حذف شد.")
-                else:
-                    await bot.send_message(chat_id=chat_id, text="❌ هشداری برای " + symbol + " پیدا نشد.")
-
-            elif text.startswith("/list"):
-                alerts = load_alerts()
-                user_alerts = alerts.get(str(chat_id), {})
-                if not user_alerts:
-                    await bot.send_message(chat_id=chat_id, text="📋 هیچ هشداری فعال نیست.")
-                else:
-                    msg_text = "📋 هشدارهای فعال:\n"
-                    for sym, info in user_alerts.items():
-                        direction = "بالای" if info["type"] == "above" else "زیر"
-                        msg_text += "• " + sym + " → " + direction + " " + str(info["price"]) + "\n"
-                    await bot.send_message(chat_id=chat_id, text=msg_text)
-
-            elif text.startswith("/analyze"):
-                parts = text.split()
-                if len(parts) < 2:
-                    await bot.send_message(chat_id=chat_id, text="❌ فرمت: /analyze SYMBOL\nمثال: /analyze ZEC")
-                    continue
-                symbol = parts[1].upper()
-                if not symbol.endswith("USDT"):
-                    symbol = symbol + "USDT"
-                await bot.send_message(chat_id=chat_id, text="⏳ در حال تحلیل " + symbol + "...")
-                try:
-                    analysis = build_analysis(symbol)
-                    if analysis:
-                        await bot.send_message(chat_id=chat_id, text=analysis, parse_mode="HTML")
-                    else:
-                        await bot.send_message(chat_id=chat_id, text="❌ ارز " + symbol + " پیدا نشد یا داده کافی نداره.")
-                except Exception as e:
-                    await bot.send_message(chat_id=chat_id, text="❌ خطا در تحلیل: " + str(e))
-
-            elif text.startswith("/start"):
-                help_text = (
-                    "🤖 <b>ربات سیگنال و هشدار</b>\n"
-                    "━━━━━━━━━━━━━━━━━━\n"
-                    "<b>دستورات:</b>\n"
-                    "/alert SYMBOL PRICE - تنظیم هشدار\n"
-                    "/remove SYMBOL - حذف هشدار\n"
-                    "/list - لیست هشدارها\n"
-                    "/analyze SYMBOL - تحلیل ارز\n"
-                    "━━━━━━━━━━━━━━━━━━\n"
-                    "<b>مثال:</b>\n"
-                    "/alert ZEC 1672\n"
-                    "/analyze BTC"
-                )
-                await bot.send_message(chat_id=chat_id, text=help_text, parse_mode="HTML")
-
-            time.sleep(0.5)
-
-        save_last_update_id(last_id)
-    except Exception as e:
-        print("خطا در پردازش دستورات: " + str(e))
-
-
-async def check_alerts(bot):
-    alerts = load_alerts()
-    if not alerts:
-        return
-    triggered = []
-    for chat_id, user_alerts in alerts.items():
-        for symbol, info in list(user_alerts.items()):
-            price = get_current_price(symbol)
-            if price is None:
-                continue
-            target = info["price"]
-            alert_type = info["type"]
-            hit = False
-            if alert_type == "above" and price >= target:
-                hit = True
-            elif alert_type == "below" and price <= target:
-                hit = True
-            if hit:
-                now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
-                msg = (
-                    "🔔 <b>هشدار قیمت!</b>\n"
-                    "━━━━━━━━━━━━━━━━━━\n"
-                    "📌 ارز: <b>" + symbol + "</b>\n"
-                    "💰 قیمت فعلی: <b>" + str(price) + "</b>\n"
-                    "🎯 هدف: <b>" + str(target) + "</b>\n"
-                    "⏰ " + now
-                )
-                try:
-                    await bot.send_message(chat_id=int(chat_id), text=msg, parse_mode="HTML")
-                except Exception as e:
-                    print("خطا در ارسال هشدار: " + str(e))
-                triggered.append((chat_id, symbol))
-    for chat_id, symbol in triggered:
-        if chat_id in alerts and symbol in alerts[chat_id]:
-            del alerts[chat_id][symbol]
-    if triggered:
-        save_alerts(alerts)
-
-    signal_history = load_history(HISTORY_FILE)
-    scenario_history = load_history(SCENARIO_HISTORY_FILE)
-    now = datetime.now(IRAN_TZ).strftime("%Y-%m-%d %H:%M")
-
-    signals_found = 0
-    scenarios_found = 0
-    duplicates_skipped = 0
-    processed = 0
-
-    # ====== پردازش دستورات تلگرام ======
-    await process_telegram_commands(bot)
-
-    # ====== چک کردن هشدارهای قیمت ======
-    await check_alerts(bot)
-
-    # ====== چک کردن سیگنال‌های فعال ======
-    await check_active_signals(bot, now)
-
-    # ====== بررسی سیگنال‌های جدید ======
-    for symbol in SYMBOLS:
-        try:
-            df = get_klines(symbol, INTERVAL)
-            time.sleep(0.15)
-            df_htf = get_klines(symbol, "4hour")
-            time.sleep(0.15)
-
-            if df is None or df_htf is None:
-                continue
-
-            df = calc_indicators(df)
-            df_htf = calc_indicators(df_htf)
-            processed += 1
-
-            last = df.iloc[-2]
-            price = last["close"]
-
-            sig, signal_type = check_signal(df, df_htf, symbol)
-
-            if sig:
-                if not is_duplicate(signal_history, symbol, sig["type"], signal_type, COOLDOWN_MINUTES):
-                    trends = get_trends_for_symbol(symbol)
-                    signal_history = update_history(signal_history, symbol, sig["type"], signal_type)
-                    signals_found += 1
-                    msg = build_signal_message(sig, now, signal_type, trends)
-                    try:
-                        sent = await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                        add_active_signal(symbol, sig, signal_type, trends, sent.message_id)
-                        print("سیگنال: " + symbol + " | " + signal_type)
-                    except Exception as e:
-                        print("خطا در ارسال: " + str(e))
-                else:
-                    duplicates_skipped += 1
-
-            # ====== سناریو برای ۵ ارز اصلی ======
-            if symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]:
-                support, resistance = find_support_resistance(df)
-                if support and resistance and last["atr"] > 0:
-                    dist_support = abs((price - support) / price) * 100
-                    dist_resistance = abs((resistance - price) / price) * 100
-
-                    if dist_support > 0.5 and dist_resistance > 0.5:
-                        if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
-                            trends = get_trends_for_symbol(symbol)
-                            msg = build_scenario_message(
-                                symbol, price, support, resistance,
-                                last["atr"], last["rsi"], last["adx"], trends
-                            )
-                            if msg:
-                                scenario_history = update_history(scenario_history, symbol, "scenario", "both")
-                                scenarios_found += 1
-                                try:
-                                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                                    print("سناریو: " + symbol)
-                                except Exception as e:
-                                    print("خطا در ارسال سناریو: " + str(e))
-
-        except Exception as e:
-            print("خطا در " + symbol + ": " + str(e))
-            continue
-
-    # ====== ذخیره تاریخچه ======
-    save_history(signal_history, HISTORY_FILE)
-    save_history(scenario_history, SCENARIO_HISTORY_FILE)
-
-    print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
-
-    # ====== گزارش وقتی هیچ سیگنالی نیست ======
-    if signals_found == 0 and scenarios_found == 0:
-        no_signal_msg = (
-            "📭 <b>گزارش - " + now + "</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "✅ پردازش: " + str(processed) + " ارز\n"
-            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
-            "⏱ تایم‌فریم: " + INTERVAL + "\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "⏰ این گزارش خودکار است."
-        )
-        try:
-            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
-        except Exception as e:
-            print("خطا در ارسال گزارش: " + str(e))
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
 async def main():
     bot = Bot(token=BOT_TOKEN)
     signal_history = load_history(HISTORY_FILE)
@@ -968,8 +571,6 @@ async def main():
     duplicates_skipped = 0
     processed = 0
 
-    await process_telegram_commands(bot)
-    await check_alerts(bot)
     await check_active_signals(bot, now)
 
     for symbol in SYMBOLS:
@@ -999,7 +600,7 @@ async def main():
                     msg = build_signal_message(sig, now, signal_type, trends)
                     try:
                         sent = await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                        add_active_signal(symbol, sig, signal_type, trends, sent.message_id)
+                        add_active_signal(symbol, sig, signal_type, sent.message_id)
                         print("سیگنال: " + symbol + " | " + signal_type)
                     except Exception as e:
                         print("خطا در ارسال: " + str(e))
@@ -1014,45 +615,4 @@ async def main():
 
                     if dist_support > 0.5 and dist_resistance > 0.5:
                         if not is_duplicate(scenario_history, symbol, "scenario", "both", SCENARIO_COOLDOWN_MINUTES):
-                            trends = get_trends_for_symbol(symbol)
-                            msg = build_scenario_message(
-                                symbol, price, support, resistance,
-                                last["atr"], last["rsi"], last["adx"], trends
-                            )
-                            if msg:
-                                scenario_history = update_history(scenario_history, symbol, "scenario", "both")
-                                scenarios_found += 1
-                                try:
-                                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-                                    print("سناریو: " + symbol)
-                                except Exception as e:
-                                    print("خطا در ارسال سناریو: " + str(e))
-
-        except Exception as e:
-            print("خطا در " + symbol + ": " + str(e))
-            continue
-
-    save_history(signal_history, HISTORY_FILE)
-    save_history(scenario_history, SCENARIO_HISTORY_FILE)
-
-    print(now + " | پردازش: " + str(processed) + " | سیگنال: " + str(signals_found) + " | سناریو: " + str(scenarios_found) + " | تکراری: " + str(duplicates_skipped))
-
-    if signals_found == 0 and scenarios_found == 0:
-        no_signal_msg = (
-            "📭 <b>گزارش - " + now + "</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "✅ پردازش: " + str(processed) + " ارز\n"
-            "❌ هیچ سیگنالی شرایط را پاس نکرده است.\n"
-            "⏱ تایم‌فریم: " + INTERVAL + "\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "⏰ این گزارش خودکار است."
-        )
-        try:
-            await bot.send_message(chat_id=CHAT_ID, text=no_signal_msg, parse_mode="HTML")
-            print("پیام 'هیچ سیگنالی نیست' ارسال شد.")
-        except Exception as e:
-            print("خطا در ارسال گزارش: " + str(e))
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+                            trends = get_trends_for_symbol(s
