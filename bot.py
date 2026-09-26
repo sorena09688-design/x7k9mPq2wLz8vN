@@ -618,4 +618,4 @@ async def main():
                     dist_support = abs((price - support) / price) * 100
                     dist_resistance = abs((resistance - price) / price) * 100
 
-                    if dist_support > 0.5 and dist_resistance
+                    if dist_support > 0.5 and dist_resistance > 0.5:
