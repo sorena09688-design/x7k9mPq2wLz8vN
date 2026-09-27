@@ -221,6 +221,145 @@ def find_support_resistance(df, lookback=50):
     support = max(support_candidates) if support_candidates else current_price * 0.97
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
     return support, resistance
+    def get_today_key():
+    return datetime.now(IRAN_TZ).strftime("%Y-%m-%d")
+
+
+def get_yesterday_key():
+    return (datetime.now(IRAN_TZ) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def load_daily():
+    try:
+        with open(DAILY_SIGNALS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+
+def save_daily(data):
+    try:
+        with open(DAILY_SIGNALS_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print("خطا در ذخیره daily: " + str(e))
+
+
+def add_to_daily(symbol, sig, signal_type):
+    today = get_today_key()
+    data = load_daily()
+    if today not in data:
+        data[today] = {"signals": [], "summary_sent": False}
+    data[today]["signals"].append({
+        "symbol": symbol,
+        "type": sig["type"],
+        "signal_type": signal_type,
+        "entry": sig["price"],
+        "sl": sig["sl"],
+        "tp1": sig["tp1"],
+        "tp2": sig["tp2"],
+        "tp3": sig["tp3"],
+        "outcome": "pending",
+        "profit_pct": 0.0,
+    })
+    save_daily(data)
+
+
+def update_daily_outcome(symbol, outcome, profit_pct):
+    today = get_today_key()
+    data = load_daily()
+    if today not in data:
+        return
+    for s in data[today]["signals"]:
+        if s["symbol"] == symbol and s["outcome"] == "pending":
+            s["outcome"] = outcome
+            s["profit_pct"] = profit_pct
+            break
+    save_daily(data)
+
+
+def calc_profit_pct(entry, exit_price, direction):
+    if entry <= 0:
+        return 0.0
+    if "لانگ" in direction:
+        return ((exit_price - entry) / entry) * 100
+    else:
+        return ((entry - exit_price) / entry) * 100
+
+
+async def send_daily_summary(bot, now):
+    try:
+        current_hour = datetime.now(IRAN_TZ).hour
+        current_minute = datetime.now(IRAN_TZ).minute
+    except:
+        return
+    if not (current_hour == 0 and current_minute < 5):
+        return
+
+    yesterday = get_yesterday_key()
+    data = load_daily()
+    if yesterday not in data:
+        return
+    if data[yesterday].get("summary_sent", False):
+        return
+
+    signals = data[yesterday]["signals"]
+    data[yesterday]["summary_sent"] = True
+    save_daily(data)
+
+    if not signals:
+        try:
+            await bot.send_message(chat_id=CHAT_ID, text="📊 خلاصه " + yesterday + "\nهیچ سیگنالی صادر نشد.", parse_mode="HTML")
+        except: pass
+        return
+
+    tp1_list = []
+    tp2_list = []
+    tp3_list = []
+    sl_list = []
+    pending_list = []
+    total_pct = 0.0
+
+    for s in signals:
+        o = s.get("outcome", "pending")
+        if o == "tp3":
+            tp3_list.append(s["symbol"])
+        elif o == "tp2":
+            tp2_list.append(s["symbol"])
+        elif o == "tp1":
+            tp1_list.append(s["symbol"])
+        elif o == "sl":
+            sl_list.append(s["symbol"])
+        else:
+            pending_list.append(s["symbol"])
+        total_pct += s.get("profit_pct", 0.0)
+
+    msg = "📊 <b>خلاصه روزانه - " + yesterday + "</b>\n"
+    msg += "━━━━━━━━━━━━━━━━━━\n"
+    msg += "📌 مجموع سیگنال: <b>" + str(len(signals)) + "</b>\n"
+    msg += "━━━━━━━━━━━━━━━━━━\n"
+    if tp3_list:
+        msg += "🥇 هدف سوم: " + "، ".join(tp3_list) + "\n"
+    if tp2_list:
+        msg += "🥈 هدف دوم: " + "، ".join(tp2_list) + "\n"
+    if tp1_list:
+        msg += "🥉 هدف اول: " + "، ".join(tp1_list) + "\n"
+    if sl_list:
+        msg += "❌ حد ضرر: " + "، ".join(sl_list) + "\n"
+    if pending_list:
+        msg += "⏳ در انتظار: " + "، ".join(pending_list) + "\n"
+    msg += "━━━━━━━━━━━━━━━━━━\n"
+    if total_pct >= 0:
+        msg += "💰 <b>برآیند سود روز:</b> +" + str(round(total_pct, 2)) + "%\n"
+    else:
+        msg += "💰 <b>برآیند سود روز:</b> " + str(round(total_pct, 2)) + "%\n"
+    msg += "⏰ " + now
+
+    try:
+        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+        print("خلاصه روزانه ارسال شد.")
+    except Exception as e:
+        print("خطا در ارسال خلاصه: " + str(e))
 
 
 def make_signal(symbol, price, last, reasons, direction):
