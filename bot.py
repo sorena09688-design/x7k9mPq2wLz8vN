@@ -593,6 +593,8 @@ async def check_active_signals(bot, now):
                     else:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
+                profit = calc_profit_pct(entry, tp3, direction)
+                update_daily_outcome(symbol, "tp3", profit)
                 del data[symbol]
                 updated = True
                 continue
@@ -607,6 +609,8 @@ async def check_active_signals(bot, now):
                     else:
                         await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
                 except: pass
+                profit = calc_profit_pct(entry, tp2, direction)
+                update_daily_outcome(symbol, "tp2", profit)
             elif price >= tp1 and not info.get("tp1_hit"):
                 info["tp1_hit"] = True
                 updated = True
