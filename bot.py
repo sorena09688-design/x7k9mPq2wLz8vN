@@ -291,12 +291,12 @@ def calc_profit_pct(entry, exit_price, direction):
 
 async def send_daily_summary(bot, now):
     try:
-    current_hour = datetime.now(IRAN_TZ).hour
-except:
-    return
+        current_hour = datetime.now(IRAN_TZ).hour
+    except:
+        return
 # اجازه ارسال خلاصه از ساعت ۰۰:۰۰ تا ۰۲:۵۹ بامداد
-if current_hour > 2:
-    return
+    if current_hour > 2:
+        return
 
     yesterday = get_yesterday_key()
     data = load_daily()
