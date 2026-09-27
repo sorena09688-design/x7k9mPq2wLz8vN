@@ -535,6 +535,7 @@ def add_active_signal(symbol, sig, signal_type, trends, message_id):
         "validity_count": 0, "last_validity_check": None,
     }
     save_history(data, ACTIVE_SIGNALS_FILE)
+    add_to_daily(symbol, sig, signal_type)
 
 
 async def check_active_signals(bot, now):
