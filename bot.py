@@ -625,49 +625,7 @@ async def check_active_signals(bot, now):
                 profit = calc_profit_pct(entry, tp1, direction)
                 update_daily_outcome(symbol, "tp1", profit)
 
-        elif "شورت" in direction:
-    if price <= tp3 and not info.get("tp3_hit"):
-        info["tp3_hit"] = True
-        updated = True
-        tp_hit = True
-        msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
-        try:
-            if msg_id:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-            else:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-        except: pass
-        profit = calc_profit_pct(entry, tp3, direction)
-        update_daily_outcome(symbol, "tp3", profit)
-        del data[symbol]
-        updated = True
-        continue
-    elif price <= tp2 and not info.get("tp2_hit"):
-        info["tp2_hit"] = True
-        updated = True
-        tp_hit = True
-        msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
-        try:
-            if msg_id:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-            else:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-        except: pass
-        profit = calc_profit_pct(entry, tp2, direction)
-        update_daily_outcome(symbol, "tp2", profit)
-    elif price <= tp1 and not info.get("tp1_hit"):
-        info["tp1_hit"] = True
-        updated = True
-        tp_hit = True
-        msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
-        try:
-            if msg_id:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
-            else:
-                await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
-        except: pass
-        profit = calc_profit_pct(entry, tp1, direction)
-        update_daily_outcome(symbol, "tp1", profit)
+         
         
         if not tp_hit:
             try:
