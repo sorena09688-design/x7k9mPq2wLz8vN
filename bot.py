@@ -625,7 +625,7 @@ async def check_active_signals(bot, now):
                 profit = calc_profit_pct(entry, tp1, direction)
                 update_daily_outcome(symbol, "tp1", profit)
                 
-       elif "شورت" in direction:
+        elif "شورت" in direction:
     if price <= tp3 and not info.get("tp3_hit"):
         info["tp3_hit"] = True
         updated = True
