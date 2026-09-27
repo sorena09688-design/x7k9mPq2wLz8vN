@@ -574,8 +574,8 @@ async def check_active_signals(bot, now):
                 else:
                     await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
             except: pass
-                profit = calc_profit_pct(entry, sl, direction)
-                update_daily_outcome(symbol, "sl", profit)
+            profit = calc_profit_pct(entry, sl, direction)
+            update_daily_outcome(symbol, "sl", profit)
             del data[symbol]
             updated = True
             continue
