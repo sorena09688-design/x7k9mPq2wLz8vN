@@ -222,7 +222,7 @@ def find_support_resistance(df, lookback=50):
     resistance = min(resistance_candidates) if resistance_candidates else current_price * 1.03
     return support, resistance
     def get_today_key():
-    return datetime.now(IRAN_TZ).strftime("%Y-%m-%d")
+        return datetime.now(IRAN_TZ).strftime("%Y-%m-%d")
 
 
 def get_yesterday_key():
