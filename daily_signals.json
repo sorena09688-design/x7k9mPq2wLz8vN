@@ -82,8 +82,8 @@
         "tp1": 35.9786,
         "tp2": 35.7229,
         "tp3": 35.3393,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -1.051246916963555
       },
       {
         "symbol": "SHIBUSDT",
@@ -94,8 +94,8 @@
         "tp1": 5.5e-06,
         "tp2": 5.46e-06,
         "tp3": 5.39e-06,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -1.0714285714285763
       }
     ],
     "summary_sent": false

@@ -14,37 +14,5 @@
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-09-28 19:34:29"
-  },
-  "GIGGLEUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 36.49,
-    "sl": 36.8736,
-    "tp1": 35.9786,
-    "tp2": 35.7229,
-    "tp3": 35.3393,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1864,
-    "created": "2026-09-28 18:01:33",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-09-28 19:34:29"
-  },
-  "SHIBUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 5.6e-06,
-    "sl": 5.66e-06,
-    "tp1": 5.5e-06,
-    "tp2": 5.46e-06,
-    "tp3": 5.39e-06,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1867,
-    "created": "2026-09-28 18:16:44",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 2,
-    "last_validity_check": "2026-09-28 19:20:41"
   }
 }
