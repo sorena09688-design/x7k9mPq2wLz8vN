@@ -60,6 +60,30 @@
         "tp3": 87.0424,
         "outcome": "tp2",
         "profit_pct": 1.6155105152235234
+      },
+      {
+        "symbol": "ORDIUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 4.488,
+        "sl": 4.5336,
+        "tp1": 4.4271,
+        "tp2": 4.3967,
+        "tp3": 4.3511,
+        "outcome": "pending",
+        "profit_pct": 0.0
+      },
+      {
+        "symbol": "GIGGLEUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 36.49,
+        "sl": 36.8736,
+        "tp1": 35.9786,
+        "tp2": 35.7229,
+        "tp3": 35.3393,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
