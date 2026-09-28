@@ -28,8 +28,8 @@
     "tp1_hit": true,
     "tp2_hit": true,
     "tp3_hit": false,
-    "validity_count": 0,
-    "last_validity_check": null
+    "validity_count": 1,
+    "last_validity_check": "2026-09-28 18:06:29"
   },
   "ORDIUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
