@@ -22,8 +22,8 @@
         "tp1": 6.07e-06,
         "tp2": 6.14e-06,
         "tp3": 6.22e-06,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -1.3422818791946323
       },
       {
         "symbol": "ADAUSDT",
