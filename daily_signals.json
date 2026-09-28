@@ -36,6 +36,18 @@
         "tp3": 0.27069,
         "outcome": "sl",
         "profit_pct": -1.680248350795499
+      },
+      {
+        "symbol": "STXUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 0.3207,
+        "sl": 0.31639,
+        "tp1": 0.32609,
+        "tp2": 0.32933,
+        "tp3": 0.33364,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
