@@ -28,8 +28,8 @@
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 2,
-    "last_validity_check": "2026-09-28 04:32:29"
+    "validity_count": 3,
+    "last_validity_check": "2026-09-28 05:04:26"
   },
   "ADAUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
@@ -44,7 +44,7 @@
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-28 04:32:29"
+    "validity_count": 2,
+    "last_validity_check": "2026-09-28 05:04:26"
   }
 }
