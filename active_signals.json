@@ -12,8 +12,8 @@
     "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-28 18:32:30"
+    "validity_count": 2,
+    "last_validity_check": "2026-09-28 19:02:48"
   },
   "GIGGLEUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
@@ -28,8 +28,8 @@
     "tp1_hit": false,
     "tp2_hit": false,
     "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-28 18:32:30"
+    "validity_count": 2,
+    "last_validity_check": "2026-09-28 19:02:48"
   },
   "SHIBUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
