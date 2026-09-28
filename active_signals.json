@@ -1,20 +1,4 @@
 {
-  "HYPEUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 89.204,
-    "sl": 89.9245,
-    "tp1": 88.2433,
-    "tp2": 87.7629,
-    "tp3": 87.0424,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1857,
-    "created": "2026-09-28 17:35:10",
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-28 18:06:29"
-  },
   "ORDIUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
     "price": 4.488,
@@ -25,7 +9,7 @@
     "signal_type": "\u06a9\u0631\u0627\u0633",
     "message_id": 1863,
     "created": "2026-09-28 18:01:04",
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "validity_count": 0,
