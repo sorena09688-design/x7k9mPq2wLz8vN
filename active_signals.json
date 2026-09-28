@@ -30,5 +30,37 @@
     "tp3_hit": false,
     "validity_count": 0,
     "last_validity_check": null
+  },
+  "SHIBUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 5.96e-06,
+    "sl": 5.88e-06,
+    "tp1": 6.07e-06,
+    "tp2": 6.14e-06,
+    "tp3": 6.22e-06,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1835,
+    "created": "2026-09-28 04:01:01",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
+  },
+  "ADAUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 0.2577,
+    "sl": 0.25337,
+    "tp1": 0.26311,
+    "tp2": 0.26636,
+    "tp3": 0.27069,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 1836,
+    "created": "2026-09-28 04:01:09",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
   }
 }

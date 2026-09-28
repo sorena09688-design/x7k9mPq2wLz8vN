@@ -12,6 +12,30 @@
         "tp3": 0.75343,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "SHIBUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 5.96e-06,
+        "sl": 5.88e-06,
+        "tp1": 6.07e-06,
+        "tp2": 6.14e-06,
+        "tp3": 6.22e-06,
+        "outcome": "pending",
+        "profit_pct": 0.0
+      },
+      {
+        "symbol": "ADAUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 0.2577,
+        "sl": 0.25337,
+        "tp1": 0.26311,
+        "tp2": 0.26636,
+        "tp3": 0.27069,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
