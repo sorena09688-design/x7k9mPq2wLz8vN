@@ -84,6 +84,18 @@
         "tp3": 35.3393,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "SHIBUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 5.6e-06,
+        "sl": 5.66e-06,
+        "tp1": 5.5e-06,
+        "tp2": 5.46e-06,
+        "tp3": 5.39e-06,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
