@@ -1,20 +1,4 @@
 {
-  "STXUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 0.3207,
-    "sl": 0.31639,
-    "tp1": 0.32609,
-    "tp2": 0.32933,
-    "tp3": 0.33364,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1856,
-    "created": "2026-09-28 17:18:45",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-28 17:50:36"
-  },
   "HYPEUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
     "price": 89.204,
