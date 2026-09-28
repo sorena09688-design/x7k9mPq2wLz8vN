@@ -108,6 +108,18 @@
         "tp3": 0.00541271,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "GIGGLEUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 36.75,
+        "sl": 37.0789,
+        "tp1": 36.3114,
+        "tp2": 36.0921,
+        "tp3": 35.7632,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
