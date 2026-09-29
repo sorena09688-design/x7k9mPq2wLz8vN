@@ -135,8 +135,8 @@
         "tp1": 83828.95,
         "tp2": 84010.41,
         "tp3": 84252.37,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -0.28968052055336496
       },
       {
         "symbol": "CAKEUSDT",
@@ -147,8 +147,8 @@
         "tp1": 2.6275,
         "tp2": 2.641,
         "tp3": 2.659,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -0.6909788867562301
       }
     ],
     "summary_sent": false
