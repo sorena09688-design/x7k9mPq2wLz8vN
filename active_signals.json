@@ -1,20 +1,4 @@
 {
-  "JASMYUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 0.005063,
-    "sl": 0.00494643,
-    "tp1": 0.00520871,
-    "tp2": 0.00529614,
-    "tp3": 0.00541271,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1886,
-    "created": "2026-09-28 20:16:58",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-09-28 21:50:37"
-  },
   "GIGGLEUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
     "price": 36.75,
