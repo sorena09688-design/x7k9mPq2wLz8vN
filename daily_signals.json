@@ -123,5 +123,22 @@
       }
     ],
     "summary_sent": true
+  },
+  "2026-09-29": {
+    "signals": [
+      {
+        "symbol": "BTCUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 83526.5,
+        "sl": 83284.54,
+        "tp1": 83828.95,
+        "tp2": 84010.41,
+        "tp3": 84252.37,
+        "outcome": "pending",
+        "profit_pct": 0.0
+      }
+    ],
+    "summary_sent": false
   }
 }
