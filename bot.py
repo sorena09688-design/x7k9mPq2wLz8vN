@@ -431,11 +431,11 @@ def check_signal(df, df_htf, symbol):
         return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
 
     if cross_down:
-    macd_required = last["macd"] < last["macd_signal"]
-    rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-    htf_strong_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-    if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok):
-        return None, None
+        macd_required = last["macd"] < last["macd_signal"]
+        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
+        htf_strong_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
+        if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok):
+            return None, None
         reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
                    "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
                    "✅ RSI = " + str(round(rsi, 2))]
