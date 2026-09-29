@@ -1,18 +1,1 @@
-{
-  "GIGGLEUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 36.75,
-    "sl": 37.0789,
-    "tp1": 36.3114,
-    "tp2": 36.0921,
-    "tp3": 35.7632,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1894,
-    "created": "2026-09-28 23:05:12",
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-09-29 00:36:29"
-  }
-}
+{}
