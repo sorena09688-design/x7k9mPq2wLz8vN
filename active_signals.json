@@ -26,7 +26,7 @@
     "message_id": 1894,
     "created": "2026-09-28 23:05:12",
     "tp1_hit": true,
-    "tp2_hit": false,
+    "tp2_hit": true,
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-09-29 00:36:29"
