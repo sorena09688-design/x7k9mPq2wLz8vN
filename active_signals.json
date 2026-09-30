@@ -1,20 +1,4 @@
 {
-  "INJUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 7.766,
-    "sl": 7.6463,
-    "tp1": 7.9156,
-    "tp2": 8.0054,
-    "tp3": 8.1251,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1938,
-    "created": "2026-09-30 05:01:38",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 1,
-    "last_validity_check": "2026-09-30 05:32:26"
-  },
   "OPUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
     "price": 0.1306,
