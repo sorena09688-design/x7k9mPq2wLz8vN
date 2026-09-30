@@ -200,8 +200,8 @@
         "tp1": 0.13265,
         "tp2": 0.13389,
         "tp3": 0.13553,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "sl",
+        "profit_pct": -1.2557427258805534
       },
       {
         "symbol": "LUNCUSDT",
