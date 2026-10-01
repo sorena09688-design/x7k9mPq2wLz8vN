@@ -243,6 +243,18 @@
         "tp3": 1.5541,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 11.025,
+        "sl": 10.8104,
+        "tp1": 11.2932,
+        "tp2": 11.4541,
+        "tp3": 11.6687,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
