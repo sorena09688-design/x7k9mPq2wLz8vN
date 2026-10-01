@@ -255,6 +255,18 @@
         "tp3": 11.6687,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "NOTUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 0.0004895,
+        "sl": 0.00048389,
+        "tp1": 0.00049652,
+        "tp2": 0.00050073,
+        "tp3": 0.00050634,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
