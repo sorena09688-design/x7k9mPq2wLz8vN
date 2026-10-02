@@ -330,8 +330,8 @@
         "tp1": 37.1043,
         "tp2": 36.8064,
         "tp3": 36.3596,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "tp1",
+        "profit_pct": 1.580106100795758
       }
     ],
     "summary_sent": false
