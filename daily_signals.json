@@ -320,6 +320,18 @@
         "tp3": 5.15e-05,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "GIGGLEUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 37.7,
+        "sl": 38.1468,
+        "tp1": 37.1043,
+        "tp2": 36.8064,
+        "tp3": 36.3596,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
