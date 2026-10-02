@@ -31,22 +31,6 @@
     "validity_count": 3,
     "last_validity_check": "2026-10-02 00:04:31"
   },
-  "ENAUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 0.2431,
-    "sl": 0.23904,
-    "tp1": 0.24817,
-    "tp2": 0.25121,
-    "tp3": 0.25527,
-    "signal_type": "\u0628\u0631\u06af\u0634\u062a",
-    "message_id": 2002,
-    "created": "2026-10-02 01:15:18",
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-10-02 02:48:38"
-  },
   "LUNCUSDT": {
     "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
     "price": 5.264e-05,
@@ -58,7 +42,7 @@
     "message_id": 2045,
     "created": "2026-10-02 18:38:53",
     "tp1_hit": true,
-    "tp2_hit": false,
+    "tp2_hit": true,
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-10-02 20:12:30"
