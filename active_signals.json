@@ -1,18 +1,1 @@
-{
-  "INJUSDT": {
-    "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
-    "price": 7.268,
-    "sl": 7.402,
-    "tp1": 7.0893,
-    "tp2": 6.9999,
-    "tp3": 6.8659,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 2067,
-    "created": "2026-10-02 22:19:15",
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-10-02 23:52:35"
-  }
-}
+{}
