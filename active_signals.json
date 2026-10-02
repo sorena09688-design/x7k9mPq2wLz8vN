@@ -31,22 +31,6 @@
     "validity_count": 3,
     "last_validity_check": "2026-10-02 00:04:31"
   },
-  "NOTUSDT": {
-    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
-    "price": 0.0004895,
-    "sl": 0.00048389,
-    "tp1": 0.00049652,
-    "tp2": 0.00050073,
-    "tp3": 0.00050634,
-    "signal_type": "\u06a9\u0631\u0627\u0633",
-    "message_id": 1995,
-    "created": "2026-10-01 23:31:13",
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "validity_count": 3,
-    "last_validity_check": "2026-10-02 01:04:28"
-  },
   "ENAUSDT": {
     "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
     "price": 0.2431,
