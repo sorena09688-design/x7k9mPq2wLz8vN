@@ -332,6 +332,18 @@
         "tp3": 36.3596,
         "outcome": "tp1",
         "profit_pct": 1.580106100795758
+      },
+      {
+        "symbol": "INJUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 7.268,
+        "sl": 7.402,
+        "tp1": 7.0893,
+        "tp2": 6.9999,
+        "tp3": 6.8659,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
