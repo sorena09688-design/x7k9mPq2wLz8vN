@@ -57,7 +57,7 @@
     "signal_type": "\u0628\u0631\u06af\u0634\u062a",
     "message_id": 2002,
     "created": "2026-10-02 01:15:18",
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "validity_count": 3,

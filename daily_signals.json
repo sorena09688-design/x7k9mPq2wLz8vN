@@ -282,8 +282,8 @@
         "tp1": 0.24817,
         "tp2": 0.25121,
         "tp3": 0.25527,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "tp1",
+        "profit_pct": 2.085561497326199
       },
       {
         "symbol": "PUMPUSDT",
