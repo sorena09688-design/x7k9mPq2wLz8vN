@@ -347,5 +347,22 @@
       }
     ],
     "summary_sent": true
+  },
+  "2026-10-03": {
+    "signals": [
+      {
+        "symbol": "KAITOUSDT",
+        "type": "\u0634\u0648\u0631\u062a \ud83d\udd34",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 0.33085,
+        "sl": 0.33205,
+        "tp1": 0.32925,
+        "tp2": 0.32845,
+        "tp3": 0.32725,
+        "outcome": "pending",
+        "profit_pct": 0.0
+      }
+    ],
+    "summary_sent": false
   }
 }
