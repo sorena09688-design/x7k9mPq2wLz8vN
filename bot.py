@@ -435,63 +435,97 @@ def make_signal(symbol, price, last, reasons, direction):
     }
 
 
-def check_signal(df, df_htf, symbol):
-    if df is None or df_htf is None:
-        return None, None
-    if len(df) < 5 or len(df_htf) < 50:
-        return None, None
-    last = df.iloc[-2]
-    prev = df.iloc[-3]
-    price = last["close"]
-    rsi = last["rsi"]
-    htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
-    htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-    adx_required = last["adx"] > ADX_THRESHOLD
+def check_signal(symbol, df):
+    if df is None or len(df) < 50:
+        return None
+        
+    # 1. دریافت روند تایم‌فریم 4 ساعته
+    htf_trend = get_htf_trend(symbol)
+    
+    # 2. استخراج آخرین مقادیر اندیکاتورها
+    current_price = df['close'].iloc[-1]
+    current_volume = df['volume'].iloc[-1]
+    avg_volume = df['avg_volume_20'].iloc[-1]
+    current_adx = df['adx'].iloc[-1]
+    current_atr = df['atr'].iloc[-1]
+    
+    kumo_a = df['senkou_span_a'].iloc[-1]
+    kumo_b = df['senkou_span_b'].iloc[-1]
 
-    if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
-        macd_required = last["macd"] > last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_up):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی"]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "برگشت"
+    # --- فیلتر 1: حجم (حداقل 1.5 برابر میانگین 20 کندل اخیر) ---
+    if current_volume < (avg_volume * 1.5):
+        return None
 
-    if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
-        macd_required = last["macd"] < last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_down):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی"]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "برگشت"
+    # --- فیلتر 2: ADX (روند قوی بالای 25) ---
+    if current_adx < 25:
+        return None
 
-    cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
-    cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
+    # ========================================================
+    # ⚠️ اینجا شرط‌های سیگنال خرید (LONG) خودت رو بذار
+    # مثلاً: long_conditions = (df['rsi'].iloc[-1] < 30) and (df['ema_9'].iloc[-1] > df['ema_21'].iloc[-1])
+    long_conditions = True  # <-- این خط رو با شرط خودت جایگزین کن
+    # ========================================================
 
-    if cross_up:
-        macd_required = last["macd"] > last["macd_signal"]
-        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
-        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
-            return None, None
-        reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
-                   "✅ RSI = " + str(round(rsi, 2))]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
+    if long_conditions: 
+        # فیلتر 3: روند 4 ساعته (فقط در روند صعودی خرید کن)
+        if htf_trend != "UP":
+            return None
+            
+        # فیلتر 4: ایچیموکو (قیمت باید بالای ابر کومو باشه)
+        if current_price < kumo_a or current_price < kumo_b:
+            return None
+            
+        # محاسبه حد ضرر و حد سودهای جدید (نسبت 1 به 2)
+        sl = current_price - (current_atr * 1.5)   # حد ضرر: 1.5 برابر ATR
+        tp1 = current_price + (current_atr * 3.0)  # هدف اول: 3 برابر ATR
+        tp2 = current_price + (current_atr * 5.0)  # هدف دوم: 5 برابر ATR
+        tp3 = current_price + (current_atr * 8.0)  # هدف سوم: 8 برابر ATR
+        
+        # خروجی سیگنال خرید
+        return {
+            "type": "LONG", 
+            "price": current_price, 
+            "sl": sl, 
+            "tp1": tp1, 
+            "tp2": tp2, 
+            "tp3": tp3, 
+            "open_time": time.time() # زمان باز شدن معامله (برای حد ضرر زمانی)
+        }
 
-    if cross_down:
-        macd_required = last["macd"] < last["macd_signal"]
-        rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-        htf_strong_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-        if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok):
-            return None, None
-        reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
-                   "✅ RSI = " + str(round(rsi, 2))]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "کراس"
+    # ========================================================
+    # ⚠️ اینجا شرط‌های سیگنال فروش (SHORT) خودت رو بذار
+    # مثلاً: short_conditions = (df['rsi'].iloc[-1] > 70) and (df['ema_9'].iloc[-1] < df['ema_21'].iloc[-1])
+    short_conditions = False # <-- این خط رو با شرط خودت جایگزین کن
+    # ========================================================
 
-    return None, None
+    if short_conditions:
+        # فیلتر 3: روند 4 ساعته (فقط در روند نزولی بفروش)
+        if htf_trend != "DOWN":
+            return None
+            
+        # فیلتر 4: ایچیموکو (قیمت باید زیر ابر کومو باشه)
+        if current_price > kumo_a or current_price > kumo_b:
+            return None
+            
+        # محاسبه حد ضرر و حد سودهای جدید
+        sl = current_price + (current_atr * 1.5)   # حد ضرر بالای قیمت
+        tp1 = current_price - (current_atr * 3.0)  # هدف اول پایین‌تر
+        tp2 = current_price - (current_atr * 5.0)
+        tp3 = current_price - (current_atr * 8.0)
+        
+        # خروجی سیگنال فروش
+        return {
+            "type": "SHORT", 
+            "price": current_price, 
+            "sl": sl, 
+            "tp1": tp1, 
+            "tp2": tp2, 
+            "tp3": tp3, 
+            "open_time": time.time()
+        }
+
+    # اگر هیچ سیگنالی نبود
+    return None
 
 
 def build_signal_message(sig, now, signal_type, trends):
