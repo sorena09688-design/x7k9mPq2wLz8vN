@@ -401,6 +401,7 @@ def make_signal(symbol, price, last, reasons, direction):
 
 
 def check_signal(df, df_htf, symbol):
+def check_signal(df, df_htf, symbol):
     if df is None or df_htf is None:
         return None, None
     if len(df) < 5 or len(df_htf) < 50:
@@ -413,46 +414,57 @@ def check_signal(df, df_htf, symbol):
     htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
     volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
     adx_required = last["adx"] > ADX_THRESHOLD
-if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
+
+    # --- فیلتر ایچیموکو ---
+    ichimoku_long_ok = (price > last["senkou_span_a"]) and (price > last["senkou_span_b"])
+    ichimoku_short_ok = (price < last["senkou_span_a"]) and (price < last["senkou_span_b"])
+
+    # ===== ۱. سیگنال برگشتی لانگ =====
+    if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
         macd_required = last["macd"] > last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_up):
+        if not (volume_required and macd_required and adx_required and htf_up and ichimoku_long_ok):
             return None, None
         reasons = ["🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")",
                    "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی"]
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
+                   "✅ قیمت بالای ابر ایچیموکو"]
         return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "برگشت"
 
+    # ===== ۲. سیگنال برگشتی شورت =====
     if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
         macd_required = last["macd"] < last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_down):
+        if not (volume_required and macd_required and adx_required and htf_down and ichimoku_short_ok):
             return None, None
         reasons = ["🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")",
                    "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی"]
+                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
+                   "✅ قیمت زیر ابر ایچیموکو"]
         return make_signal(symbol, price, last, reasons, "شورت 🔴"), "برگشت"
 
+    # ===== ۳. کراس صعودی EMA =====
     cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
 
     if cross_up:
         macd_required = last["macd"] > last["macd_signal"]
         rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
-        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok):
+        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok and ichimoku_long_ok):
             return None, None
         reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
                    "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
-                   "✅ RSI = " + str(round(rsi, 2))]
+                   "✅ RSI = " + str(round(rsi, 2)), "✅ قیمت بالای ابر ایچیموکو"]
         return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
 
+    # ===== ۴. کراس نزولی EMA =====
     if cross_down:
         macd_required = last["macd"] < last["macd_signal"]
         rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
         htf_strong_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-        if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok):
+        if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok and ichimoku_short_ok):
             return None, None
         reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
                    "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
-                   "✅ RSI = " + str(round(rsi, 2))]
+                   "✅ RSI = " + str(round(rsi, 2)), "✅ قیمت زیر ابر ایچیموکو"]
         return make_signal(symbol, price, last, reasons, "شورت 🔴"), "کراس"
 
     return None, None
