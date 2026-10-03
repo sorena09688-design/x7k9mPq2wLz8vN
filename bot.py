@@ -213,7 +213,7 @@ def get_decimals(price):
     elif price >= 1:
         return 4
     elif price >= 0.01:
-return 5
+        return 5
     return 8
 
 
