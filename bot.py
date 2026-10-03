@@ -681,6 +681,197 @@ del data[symbol]
             validity_count = info.get("validity_count", 0)
             should_send = False
             if validity_count < MAX_VALIDITY_CHECKS:
+async def check_active_signals(bot, now):
+    data = load_history(ACTIVE_SIGNALS_FILE)
+    if not data:
+        return
+    updated = False
+    now_dt = datetime.now(IRAN_TZ).replace(tzinfo=None)
+    
+    for symbol in list(data.keys()):
+        info = data[symbol]
+        price = get_price(symbol)
+        if price is None:
+            continue
+        direction = info["type"]
+        sl = info["sl"]
+        tp1 = info["tp1"]
+        tp2 = info["tp2"]
+        tp3 = info["tp3"]
+        msg_id = info.get("message_id")
+        dec = get_decimals(info["price"])
+        entry = info["price"]
+
+        # ====== ۱. بررسی بریک‌ایون (Breakeven) ======
+        if "لانگ" in direction and price >= tp1:
+            if not info.get("moved_to_be", False):
+                info["sl"] = entry
+                info["moved_to_be"] = True
+                updated = True
+                sl = entry  # آپدیت مقدار sl برای چک کردن مرحله بعد
+                be_msg = "🛡 <b>حد ضرر به بریک‌ایون منتقل شد.</b>\n💰 قیمت فعلی: " + str(round(price, dec)) + "\n🛑 حد ضرر جدید: " + str(entry)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=be_msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=be_msg, parse_mode="HTML")
+                except: pass
+        elif "شورت" in direction and price <= tp1:
+            if not info.get("moved_to_be", False):
+                info["sl"] = entry
+                info["moved_to_be"] = True
+                updated = True
+                sl = entry
+                be_msg = "🛡 <b>حد ضرر به بریک‌ایون منتقل شد.</b>\n💰 قیمت فعلی: " + str(round(price, dec)) + "\n🛑 حد ضرر جدید: " + str(entry)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=be_msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=be_msg, parse_mode="HTML")
+                except: pass
+
+        # ====== ۲. بررسی حد ضرر زمانی (۲۴ ساعت) ======
+        if "created" in info:
+            try:
+                created_time = datetime.strptime(info["created"], "%Y-%m-%d %H:%M:%S")
+                minutes_passed = (now_dt - created_time).total_seconds() / 60
+                if minutes_passed > 1440:  # 24 ساعت = 1440 دقیقه
+                    profit = calc_profit_pct(entry, price, direction)
+                    update_daily_outcome(symbol, "time", profit)
+                    time_msg = "⏳ <b>زمان معامله به پایان رسید (۲۴ ساعت).</b>\n💰 قیمت فعلی: " + str(round(price, dec))
+                    try:
+                        if msg_id:
+                            await bot.send_message(chat_id=CHAT_ID, text=time_msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                        else:
+                            await bot.send_message(chat_id=CHAT_ID, text=time_msg, parse_mode="HTML")
+                    except: pass
+                    del data[symbol]
+                    updated = True
+                    continue
+            except: pass
+
+        # ====== ادامه کدهای قبلی خودت برای چک کردن SL و TPها ======
+        sl_hit = False
+        if "لانگ" in direction and price <= sl:
+            sl_hit = True
+        elif "شورت" in direction and price >= sl:
+            sl_hit = True
+
+        if sl_hit:
+            msg = ("❌ <b>سیگنال باطل شد</b>\n━━━━━━━━━━━━━━━━━━\n"
+                   "🔴 <b>حد ضرر لمس شد:</b> " + str(sl) + "\n"
+                   "💰 <b>قیمت فعلی:</b> " + str(round(price, dec)) + "\n⏰ " + now)
+            try:
+                if msg_id:
+                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                else:
+                    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+            except: pass
+            profit = calc_profit_pct(entry, sl, direction)
+            update_daily_outcome(symbol, "sl", profit)
+            del data[symbol]
+            updated = True
+            continue
+
+        tp_hit = False
+        if "لانگ" in direction:
+            if price >= tp3 and not info.get("tp3_hit"):
+                info["tp3_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp3, direction)
+                update_daily_outcome(symbol, "tp3", profit)
+                del data[symbol] # حذف از اکتیو
+                updated = True
+                continue
+            elif price >= tp2 and not info.get("tp2_hit"):
+                info["tp2_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp2, direction)
+                update_daily_outcome(symbol, "tp2", profit)
+            elif price >= tp1 and not info.get("tp1_hit"):
+                info["tp1_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp1, direction)
+                update_daily_outcome(symbol, "tp1", profit)
+        
+        elif "شورت" in direction:
+            if price <= tp3 and not info.get("tp3_hit"):
+                info["tp3_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯🎯 <b>هدف سوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP3: " + str(tp3)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp3, direction)
+                update_daily_outcome(symbol, "tp3", profit)
+                del data[symbol] # حذف از اکتیو
+                updated = True
+                continue
+            elif price <= tp2 and not info.get("tp2_hit"):
+                info["tp2_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯🎯 <b>هدف دوم لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP2: " + str(tp2)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp2, direction)
+                update_daily_outcome(symbol, "tp2", profit)
+            elif price <= tp1 and not info.get("tp1_hit"):
+                info["tp1_hit"] = True
+                updated = True
+                tp_hit = True
+                msg = "🎯 <b>هدف اول لمس شد!</b>\n💰 " + str(round(price, dec)) + "\n🎯 TP1: " + str(tp1)
+                try:
+                    if msg_id:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML", reply_to_message_id=msg_id)
+                    else:
+                        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode="HTML")
+                except: pass
+                profit = calc_profit_pct(entry, tp1, direction)
+                update_daily_outcome(symbol, "tp1", profit)
+
+        if not tp_hit:
+            try:
+                created = datetime.strptime(info["created"], "%Y-%m-%d %H:%M:%S")
+                minutes_passed = (now_dt - created).total_seconds() / 60
+            except:
+                minutes_passed = 0
+            last_validity = info.get("last_validity_check")
+            validity_count = info.get("validity_count", 0)
+            should_send = False
+            if validity_count < MAX_VALIDITY_CHECKS:
                 if last_validity is None and minutes_passed >= VALIDITY_CHECK_MINUTES:
                     should_send = True
                 elif last_validity is not None:
