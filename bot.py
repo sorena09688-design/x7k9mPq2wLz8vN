@@ -213,7 +213,24 @@ def get_trend(df):
     return "نزولی 📉", diff_pct
 
 
-
+def get_htf_trend(symbol):
+    url = f"https://api.kucoin.com/api/v1/market/candles?type=4hour&symbol={symbol}"
+    try:
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        closes = [float(candle[2]) for candle in data['data']]
+        closes.reverse()
+        
+        ema_200 = pd.Series(closes).ewm(span=200, adjust=False).mean().iloc[-1]
+        current_price = closes[-1]
+        
+        if current_price > ema_200:
+            return "UP"
+        else:
+            return "DOWN"
+    except Exception as e:
+        print(f"Error fetching HTF trend: {e}")
+        return "NEUTRAL"
 
 def get_trends_for_symbol(symbol):
     trends = {}
