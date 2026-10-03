@@ -10,7 +10,7 @@
     "message_id": 2078,
     "created": "2026-10-03 11:32:37",
     "tp1_hit": true,
-    "tp2_hit": false,
+    "tp2_hit": true,
     "tp3_hit": false,
     "validity_count": 2,
     "last_validity_check": "2026-10-03 12:34:27"
