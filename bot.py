@@ -697,16 +697,8 @@ async def check_active_signals(bot, now):
                 profit = calc_profit_pct(entry, tp1, direction)
                 update_daily_outcome(symbol, "tp1", profit)
 
-        if not tp_hit:
-            try:
-                created = datetime.strptime(info["created"], "%Y-%m-%d %H:%M:%S")
-                minutes_passed = (now_dt - created).total_seconds() / 60
-            except:
-                minutes_passed = 0
-            last_validity = info.get("last_validity_check")
-            validity_count = info.get("validity_count", 0)
-            should_send = False
-            if validity_count < MAX_VALIDITY_CHECKS:
+
+
 async def check_active_signals(bot, now):
     data = load_history(ACTIVE_SIGNALS_FILE)
     if not data:
