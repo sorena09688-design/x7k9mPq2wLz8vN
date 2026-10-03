@@ -623,7 +623,7 @@ async def check_active_signals(bot, now):
                 except: pass
                 profit = calc_profit_pct(entry, tp3, direction)
                 update_daily_outcome(symbol, "tp3", profit)
-del data[symbol]
+                del data[symbol]
                 updated = True
                 continue
             elif price >= tp2 and not info.get("tp2_hit"):
