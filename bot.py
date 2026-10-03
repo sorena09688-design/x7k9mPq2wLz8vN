@@ -383,13 +383,13 @@ def make_signal(symbol, price, last, reasons, direction):
     dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
-        sl = round(price - (atr * 1.5), dec)   # اصلاح: 1.5 به جای 2.0 (کم‌ریسک‌تر)
-        tp1 = round(price + (atr * 3.0), dec)  # اصلاح: 3.0 به جای 2.5 (نسبت 1:2)
+        sl = round(price - (atr * 1.5), dec)   # حد ضرر 1.5 برابر ATR
+        tp1 = round(price + (atr * 3.0), dec)  # هدف اول 3 برابر ATR (نسبت 1:2)
         tp2 = round(price + (atr * 5.0), dec)
         tp3 = round(price + (atr * 8.0), dec)
     else:
-        sl = round(price + (atr * 1.5), dec)   # اصلاح
-        tp1 = round(price - (atr * 3.0), dec)  # اصلاح
+        sl = round(price + (atr * 1.5), dec)
+        tp1 = round(price - (atr * 3.0), dec)
         tp2 = round(price - (atr * 5.0), dec)
         tp3 = round(price - (atr * 8.0), dec)
     return {
