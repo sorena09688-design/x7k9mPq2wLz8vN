@@ -401,72 +401,104 @@ def make_signal(symbol, price, last, reasons, direction):
 
 
 def check_signal(df, df_htf, symbol):
+def check_signal(df, df_htf, symbol):
     if df is None or df_htf is None:
         return None, None
     if len(df) < 5 or len(df_htf) < 50:
         return None, None
+    
     last = df.iloc[-2]
     prev = df.iloc[-3]
     price = last["close"]
     rsi = last["rsi"]
+    
+    # === ۳ فیلتر اجباری اول ===
     htf_up = df_htf["close"].iloc[-1] > df_htf["ema_trend"].iloc[-1]
     htf_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-    volume_required = last["volume"] > (last["vol_ma"] * VOLUME_MULT)
-    adx_required = last["adx"] > ADX_THRESHOLD
-
-    # --- فیلتر ایچیموکو ---
-    ichimoku_long_ok = (price > last["senkou_span_a"]) and (price > last["senkou_span_b"])
-    ichimoku_short_ok = (price < last["senkou_span_a"]) and (price < last["senkou_span_b"])
-
-    # ===== ۱. سیگنال برگشتی لانگ =====
-    if rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]:
-        macd_required = last["macd"] > last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_up and ichimoku_long_ok):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع فروش (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
-                   "✅ قیمت بالای ابر ایچیموکو"]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "برگشت"
-
-    # ===== ۲. سیگنال برگشتی شورت =====
-    if rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]:
-        macd_required = last["macd"] < last["macd_signal"]
-        if not (volume_required and macd_required and adx_required and htf_down and ichimoku_short_ok):
-            return None, None
-        reasons = ["🔄 برگشت از اشباع خرید (RSI: " + str(round(rsi, 2)) + ")",
-                   "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
-                   "✅ قیمت زیر ابر ایچیموکو"]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "برگشت"
-
-    # ===== ۳. کراس صعودی EMA =====
+    volume_min_ok = last["volume"] > (last["vol_ma"] * 1.5)
+    
+    if not volume_min_ok:
+        return None, None
+    
+    # === تشخیص جهت سیگنال ===
     cross_up = (prev["ema_fast"] <= prev["ema_slow"]) and (last["ema_fast"] > last["ema_slow"])
     cross_down = (prev["ema_fast"] >= prev["ema_slow"]) and (last["ema_fast"] < last["ema_slow"])
-
-    if cross_up:
-        macd_required = last["macd"] > last["macd_signal"]
-        rsi_ok = (rsi > 30) and (rsi < 50)
-        if not (volume_required and macd_required and adx_required and htf_up and rsi_ok and ichimoku_long_ok):
-            return None, None
-        reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته صعودی",
-                   "✅ RSI = " + str(round(rsi, 2)), "✅ قیمت بالای ابر ایچیموکو"]
-        return make_signal(symbol, price, last, reasons, "لانگ 🟢"), "کراس"
-
-    # ===== ۴. کراس نزولی EMA =====
-    if cross_down:
-        macd_required = last["macd"] < last["macd_signal"]
+    reversal_long = rsi < RSI_REVERSAL_LONG and rsi > prev["rsi"] and last["close"] > prev["close"]
+    reversal_short = rsi > RSI_REVERSAL_SHORT and rsi < prev["rsi"] and last["close"] < prev["close"]
+    
+    direction = None
+    signal_type = None
+    
+    if (cross_up or reversal_long) and htf_up:
+        ichimoku_ok = (price > last["senkou_span_a"]) and (price > last["senkou_span_b"])
+        # === فیلتر اجباری RSI برای لانگ ===
+        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
+        if ichimoku_ok and rsi_ok:
+            direction = "لانگ 🟢"
+            signal_type = "کراس" if cross_up else "برگشت"
+    elif (cross_down or reversal_short) and htf_down:
+        ichimoku_ok = (price < last["senkou_span_a"]) and (price < last["senkou_span_b"])
+        # === فیلتر اجباری RSI برای شورت ===
         rsi_ok = (rsi > RSI_SHORT_MIN) and (rsi < RSI_SHORT_MAX)
-        htf_strong_down = df_htf["close"].iloc[-1] < df_htf["ema_trend"].iloc[-1]
-        if not (volume_required and macd_required and adx_required and htf_strong_down and rsi_ok and ichimoku_short_ok):
-            return None, None
-        reasons = ["✅ کراس نزولی EMA9/21", "✅ حجم بالا", "✅ MACD نزولی",
-                   "✅ ADX = " + str(round(last["adx"], 2)), "✅ روند ۴ساعته نزولی",
-                   "✅ RSI = " + str(round(rsi, 2)), "✅ قیمت زیر ابر ایچیموکو"]
-        return make_signal(symbol, price, last, reasons, "شورت 🔴"), "کراس"
-
-    return None, None
+        if ichimoku_ok and rsi_ok:
+            direction = "شورت 🔴"
+            signal_type = "کراس" if cross_down else "برگشت"
+    
+    if direction is None:
+        return None, None
+    
+    # === محاسبه امتیاز (فقط ADX و MACD) ===
+    score = 0
+    reasons = []
+    is_long = "لانگ" in direction
+    
+    # --- شرط ۱: ADX ---
+    if last["adx"] > 25:
+        score += 1
+        reasons.append("✅ ADX قوی = " + str(round(last["adx"], 2)))
+    else:
+        reasons.append("🟡 ADX متوسط = " + str(round(last["adx"], 2)))
+    
+    # --- شرط ۲: MACD ---
+    macd_ok = (last["macd"] > last["macd_signal"]) if is_long else (last["macd"] < last["macd_signal"])
+    if macd_ok:
+        score += 1
+        reasons.append("✅ MACD " + ("صعودی" if is_long else "نزولی"))
+    else:
+        reasons.append("⚠️ MACD مخالف")
+    
+    # === درجه‌بندی (۲ امتیاز) ===
+    if score == 2:
+        grade = "💎 <b>الماس</b> 💎"
+        grade_emoji = "💎"
+        grade_bar = "🟩🟩"
+        grade_stars = "🔥💎🔥"
+    elif score == 1:
+        grade = "🥇 <b>طلایی</b> 🥇"
+        grade_emoji = "🥇"
+        grade_bar = "🟨⬜"
+        grade_stars = "✨🥇✨"
+    else:  # score == 0
+        grade = "🥈 <b>نقره‌ای</b> 🥈"
+        grade_emoji = "🥈"
+        grade_bar = "🟦⬜"
+        grade_stars = "💫🥈💫"
+    
+    # === دلایل اجباری ===
+    reasons.insert(0, "✅ روند ۴ساعته " + ("صعودی 📈" if is_long else "نزولی 📉"))
+    reasons.insert(1, "✅ قیمت خارج از ابر ایچیموکو")
+    reasons.insert(2, "✅ حجم بالای 1.5 برابر")
+    reasons.insert(3, "✅ RSI در محدوده = " + str(round(rsi, 2)))
+    
+    sig = make_signal(symbol, price, last, reasons, direction)
+    sig["grade"] = grade
+    sig["grade_emoji"] = grade_emoji
+    sig["grade_bar"] = grade_bar
+    sig["grade_stars"] = grade_stars
+    sig["score"] = score
+    sig["max_score"] = 2
+    
+    return sig, signal_type
 
 
 def build_signal_message(sig, now, signal_type, trends):
