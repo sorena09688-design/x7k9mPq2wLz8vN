@@ -368,21 +368,21 @@ def make_signal(symbol, price, last, reasons, direction):
     dec = get_decimals(price)
     atr = last["atr"]
     if direction == "لانگ 🟢":
-        sl = round(price - (atr * 2.0), dec)
-        tp1 = round(price + (atr * 2.5), dec)
-        tp2 = round(price + (atr * 4.0), dec)
-        tp3 = round(price + (atr * 6.0), dec)
+        sl = round(price - (atr * 1.5), dec)   # اصلاح: 1.5 به جای 2.0 (کم‌ریسک‌تر)
+        tp1 = round(price + (atr * 3.0), dec)  # اصلاح: 3.0 به جای 2.5 (نسبت 1:2)
+        tp2 = round(price + (atr * 5.0), dec)
+        tp3 = round(price + (atr * 8.0), dec)
     else:
-        sl = round(price + (atr * 1.5), dec)
-        tp1 = round(price - (atr * 2.0), dec)
-        tp2 = round(price - (atr * 3.0), dec)
-        tp3 = round(price - (atr * 4.5), dec)
+        sl = round(price + (atr * 1.5), dec)   # اصلاح
+        tp1 = round(price - (atr * 3.0), dec)  # اصلاح
+        tp2 = round(price - (atr * 5.0), dec)
+        tp3 = round(price - (atr * 8.0), dec)
     return {
         "type": direction, "symbol": symbol, "price": round(price, dec),
         "rsi": round(last["rsi"], 2), "adx": round(last["adx"], 2),
         "reasons": reasons, "sl": sl, "tp1": tp1, "tp2": tp2, "tp3": tp3,
         "rr1": calc_rr(price, sl, tp1), "rr2": calc_rr(price, sl, tp2), "rr3": calc_rr(price, sl, tp3),
-    }
+        }
 
 
 def check_signal(df, df_htf, symbol):
