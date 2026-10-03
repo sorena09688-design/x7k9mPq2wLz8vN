@@ -385,6 +385,18 @@
         "tp3": 1.5024,
         "outcome": "pending",
         "profit_pct": 0.0
+      },
+      {
+        "symbol": "ENAUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 0.2347,
+        "sl": 0.23259,
+        "tp1": 0.23734,
+        "tp2": 0.23893,
+        "tp3": 0.24104,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
