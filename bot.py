@@ -446,7 +446,7 @@ def check_signal(df, df_htf, symbol):
 
     if cross_up:
         macd_required = last["macd"] > last["macd_signal"]
-        rsi_ok = (rsi > RSI_LONG_MIN) and (rsi < RSI_LONG_MAX)
+        rsi_ok = (rsi > 30) and (rsi < 50)
         if not (volume_required and macd_required and adx_required and htf_up and rsi_ok and ichimoku_long_ok):
             return None, None
         reasons = ["✅ کراس صعودی EMA9/21", "✅ حجم بالا", "✅ MACD صعودی",
