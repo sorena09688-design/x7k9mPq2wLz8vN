@@ -144,29 +144,60 @@ def get_price(symbol):
 
 
 def calc_indicators(df):
+    if df is None or len(df) < 50:
+        return df
+
+    # --- محاسبات قبلی خودت (RSI, EMA, MACD) ---
+    # (کدهای خودت رو اینجا نگه دار)
+    df["ema_9"] = df["close"].ewm(span=9, adjust=False).mean()
+    df["ema_21"] = df["close"].ewm(span=21, adjust=False).mean()
+    df["ema_100"] = df["close"].ewm(span=100, adjust=False).mean()
+    
     delta = df["close"].diff()
-    gain = delta.where(delta > 0, 0).rolling(RSI_PERIOD).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(RSI_PERIOD).mean()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df["rsi"] = 100 - (100 / (1 + rs))
-    df["ema_fast"] = df["close"].ewm(span=EMA_FAST, adjust=False).mean()
-    df["ema_slow"] = df["close"].ewm(span=EMA_SLOW, adjust=False).mean()
-    df["ema_trend"] = df["close"].ewm(span=EMA_TREND, adjust=False).mean()
-    df["tr"] = np.maximum(df["high"] - df["low"],
-                np.maximum(abs(df["high"] - df["close"].shift()),
-                           abs(df["low"] - df["close"].shift())))
-    df["atr"] = df["tr"].rolling(14).mean()
-    df["up"] = df["high"].diff()
-    df["down"] = -df["low"].diff()
-    df["plus_dm"] = np.where((df["up"] > df["down"]) & (df["up"] > 0), df["up"], 0)
-    df["minus_dm"] = np.where((df["down"] > df["up"]) & (df["down"] > 0), df["down"], 0)
-    df["plus_di"] = 100 * (df["plus_dm"].rolling(14).mean() / df["atr"])
-    df["minus_di"] = 100 * (df["minus_dm"].rolling(14).mean() / df["atr"])
-    df["dx"] = 100 * abs(df["plus_di"] - df["minus_di"]) / (df["plus_di"] + df["minus_di"])
-    df["adx"] = df["dx"].rolling(14).mean()
+    
     df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
     df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
     df["vol_ma"] = df["volume"].rolling(20).mean()
+
+    # --- محاسبات ایچیموکو ---
+    high_9 = df['high'].rolling(window=9).max()
+    low_9 = df['low'].rolling(window=9).min()
+    df['tenkan_sen'] = (high_9 + low_9) / 2
+
+    high_26 = df['high'].rolling(window=26).max()
+    low_26 = df['low'].rolling(window=26).min()
+    df['kijun_sen'] = (high_26 + low_26) / 2
+
+    df['senkou_span_a'] = ((df['tenkan_sen'] + df['kijun_sen']) / 2).shift(26)
+    
+    high_52 = df['high'].rolling(window=52).max()
+    low_52 = df['low'].rolling(window=52).min()
+    df['senkou_span_b'] = ((high_52 + low_52) / 2).shift(26)
+
+    # --- محاسبات حجم ---
+    df['avg_volume_20'] = df['volume'].rolling(window=20).mean()
+
+    # --- محاسبات ATR و ADX (جدید) ---
+    df['tr0'] = abs(df['high'] - df['low'])
+    df['tr1'] = abs(df['high'] - df['close'].shift())
+    df['tr2'] = abs(df['low'] - df['close'].shift())
+    df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+    df['atr'] = df['tr'].rolling(window=14).mean()
+    
+    df['up_move'] = df['high'].diff()
+    df['down_move'] = df['low'].shift() - df['low']
+    df['plus_dm'] = np.where((df['up_move'] > df['down_move']) & (df['up_move'] > 0), df['up_move'], 0)
+    df['minus_dm'] = np.where((df['down_move'] > df['up_move']) & (df['down_move'] > 0), df['down_move'], 0)
+    df['tr14'] = df['tr'].rolling(window=14).sum()
+    df['plus_di'] = 100 * (df['plus_dm'].rolling(window=14).sum() / df['tr14'])
+    df['minus_di'] = 100 * (df['minus_dm'].rolling(window=14).sum() / df['tr14'])
+    df['dx'] = 100 * abs(df['plus_di'] - df['minus_di']) / (df['plus_di'] + df['minus_di'])
+    df['adx'] = df['dx'].rolling(window=14).mean()
+
     return df
 
 
@@ -180,6 +211,8 @@ def get_trend(df):
     if last_close > last_ema:
         return "صعودی 📈", diff_pct
     return "نزولی 📉", diff_pct
+
+
 
 
 def get_trends_for_symbol(symbol):
