@@ -361,6 +361,18 @@
         "tp3": 0.32725,
         "outcome": "tp1",
         "profit_pct": 0.483602841166689
+      },
+      {
+        "symbol": "BONKUSDT",
+        "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+        "signal_type": "\u06a9\u0631\u0627\u0633",
+        "entry": 3.64e-06,
+        "sl": 3.61e-06,
+        "tp1": 3.68e-06,
+        "tp2": 3.71e-06,
+        "tp3": 3.74e-06,
+        "outcome": "pending",
+        "profit_pct": 0.0
       }
     ],
     "summary_sent": false
