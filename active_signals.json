@@ -14,5 +14,21 @@
     "tp3_hit": false,
     "validity_count": 3,
     "last_validity_check": "2026-10-03 15:32:27"
+  },
+  "XRPUSDT": {
+    "type": "\u0644\u0627\u0646\u06af \ud83d\udfe2",
+    "price": 1.4867,
+    "sl": 1.4815,
+    "tp1": 1.4933,
+    "tp2": 1.4972,
+    "tp3": 1.5024,
+    "signal_type": "\u06a9\u0631\u0627\u0633",
+    "message_id": 2094,
+    "created": "2026-10-03 17:31:17",
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "validity_count": 0,
+    "last_validity_check": null
   }
 }
