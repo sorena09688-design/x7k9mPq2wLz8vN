@@ -401,7 +401,6 @@ def make_signal(symbol, price, last, reasons, direction):
 
 
 def check_signal(df, df_htf, symbol):
-def check_signal(df, df_htf, symbol):
     if df is None or df_htf is None:
         return None, None
     if len(df) < 5 or len(df_htf) < 50:
