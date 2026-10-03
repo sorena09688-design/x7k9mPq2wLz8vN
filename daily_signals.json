@@ -383,8 +383,8 @@
         "tp1": 1.4933,
         "tp2": 1.4972,
         "tp3": 1.5024,
-        "outcome": "pending",
-        "profit_pct": 0.0
+        "outcome": "tp1",
+        "profit_pct": 0.44393623461358456
       },
       {
         "symbol": "ENAUSDT",
